@@ -1,0 +1,1732 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#0a0e1a" />
+<meta name="description" content="HorasApp Pro — control de horas trabajadas, ETT, hoteles, servicios y cobros." />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="HorasApp Pro" />
+<title>HorasApp Pro</title>
+<style>
+/* ============================================================
+   HorasApp Pro — Estilos (oscuro premium, mobile-first)
+   ============================================================ */
+:root{
+  --bg:#070b16; --bg2:#0a0e1a; --surface:#111726; --surface2:#161d30;
+  --card:#141b2e; --line:#212b45; --line2:#2c3a5e;
+  --txt:#eef2ff; --muted:#8a96b5; --muted2:#5d6a8c;
+  --brand:#5b8cff; --brand2:#7aa2ff; --accent:#16d6a4; --warn:#ffb020;
+  --danger:#ff5c7a; --ok:#19c37d; --info:#4cc9f0; --purple:#a78bfa;
+  --radius:18px; --radius-sm:12px;
+  --shadow:0 10px 30px rgba(0,0,0,.45);
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bot:env(safe-area-inset-bottom,0px);
+}
+[data-tema="claro"]{
+  --bg:#eef1f7; --bg2:#f5f7fc; --surface:#ffffff; --surface2:#f0f3fa;
+  --card:#ffffff; --line:#e2e7f2; --line2:#d3dbec;
+  --txt:#0d1326; --muted:#5b667f; --muted2:#8693ad;
+  --shadow:0 8px 24px rgba(40,60,120,.12);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  background:radial-gradient(1200px 600px at 50% -10%, #14213f 0%, var(--bg) 55%, var(--bg) 100%);
+  color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
+  font-size:15px; line-height:1.45; -webkit-font-smoothing:antialiased;
+  overscroll-behavior-y:none;
+}
+button,input,select,textarea{font-family:inherit; font-size:16px; color:inherit;}
+button{cursor:pointer; border:none; background:none;}
+a{color:var(--brand2); text-decoration:none;}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-thumb{background:var(--line2); border-radius:8px;}
+
+/* Layout */
+#app{max-width:540px; margin:0 auto; min-height:100%; position:relative;}
+.topbar{
+  position:sticky; top:0; z-index:40;
+  padding:calc(var(--safe-top) + 12px) 16px 12px;
+  background:linear-gradient(180deg, var(--bg2) 70%, transparent);
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+}
+.topbar h1{font-size:20px; font-weight:800; margin:0; letter-spacing:-.3px;}
+.topbar .sub{font-size:11.5px; color:var(--muted); font-weight:600;}
+.brandmark{display:flex; align-items:center; gap:10px;}
+.brandmark .logo{
+  width:38px;height:38px;border-radius:11px;
+  background:linear-gradient(135deg,var(--brand),var(--purple));
+  display:grid;place-items:center;font-weight:900;color:#fff;font-size:17px;
+  box-shadow:0 6px 16px rgba(91,140,255,.45);
+}
+.icon-btn{
+  width:40px;height:40px;border-radius:12px;background:var(--surface);
+  border:1px solid var(--line); display:grid;place-items:center;color:var(--txt);
+}
+main{padding:6px 14px 120px; animation:fade .25s ease;}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* Tipografía / títulos */
+.section-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:22px 4px 10px;}
+.muted{color:var(--muted);} .small{font-size:12.5px;}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);}
+.card+.card{margin-top:12px;}
+.row{display:flex;gap:12px;} .row>*{flex:1;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+
+/* Hero totales */
+.hero{
+  background:linear-gradient(135deg,#1b2950,#0f1730);
+  border:1px solid var(--line2); border-radius:var(--radius);
+  padding:18px; box-shadow:var(--shadow); position:relative; overflow:hidden;
+}
+.hero:before{content:"";position:absolute;right:-40px;top:-40px;width:160px;height:160px;
+  background:radial-gradient(circle,rgba(122,162,255,.35),transparent 70%);}
+.hero .label{font-size:12px;color:var(--muted);font-weight:700;}
+.hero .big{font-size:34px;font-weight:900;letter-spacing:-1px;margin:2px 0;}
+.hero .sub{font-size:13px;color:var(--brand2);font-weight:700;}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);padding:13px;}
+.kpi .k-label{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.kpi .k-val{font-size:21px;font-weight:850;margin-top:3px;}
+.kpi .k-val.sm{font-size:17px;}
+
+/* Tarjeta jornada */
+.j-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);padding:13px;display:flex;gap:12px;align-items:stretch;margin-bottom:10px;position:relative;overflow:hidden;}
+.j-card .bar{width:5px;border-radius:6px;flex:0 0 5px;}
+.j-card .body{flex:1;min-width:0;}
+.j-card .ett{font-weight:800;font-size:14.5px;display:flex;align-items:center;gap:7px;}
+.j-card .meta{font-size:12.5px;color:var(--muted);margin-top:2px;}
+.j-card .nums{text-align:right;flex:0 0 auto;}
+.j-card .bruto{font-weight:850;font-size:16px;}
+.j-card .neto{font-size:12px;color:var(--accent);font-weight:700;}
+.j-card .hrs{font-size:12px;color:var(--muted);}
+
+/* Chips de estado */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.4px;}
+.chip.dot:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+.c-planeada{background:rgba(76,201,240,.15);color:#76d7f5;}
+.c-confirmada{background:rgba(25,195,125,.16);color:#3fe09a;}
+.c-pendiente{background:rgba(255,176,32,.16);color:#ffc04d;}
+.c-cobrada{background:rgba(122,162,255,.18);color:#9ab6ff;}
+.c-cancelada{background:rgba(255,92,122,.16);color:#ff8197;}
+.c-revision{background:rgba(167,139,250,.18);color:#c4b1ff;}
+.c-neutra{background:var(--surface2);color:var(--muted);}
+
+/* Botones */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  background:var(--surface);border:1px solid var(--line);color:var(--txt);
+  padding:13px 16px;border-radius:14px;font-weight:800;font-size:14.5px;width:100%;transition:.15s;}
+.btn:active{transform:scale(.97);}
+.btn.primary{background:linear-gradient(135deg,var(--brand),#4470e6);border-color:transparent;color:#fff;box-shadow:0 8px 20px rgba(91,140,255,.4);}
+.btn.accent{background:linear-gradient(135deg,var(--accent),#0fae85);border-color:transparent;color:#04231b;}
+.btn.ghost{background:transparent;}
+.btn.danger{background:rgba(255,92,122,.14);border-color:rgba(255,92,122,.3);color:#ff8197;}
+.btn.sm{padding:9px 12px;font-size:13px;width:auto;border-radius:11px;}
+.btn-row{display:flex;gap:10px;} .btn-row .btn{width:auto;flex:1;}
+.fab-quick{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:12px;}
+.fab-quick .btn{flex-direction:column;gap:6px;padding:14px 6px;font-size:11.5px;}
+.fab-quick .btn .ic{font-size:20px;}
+
+/* Forms */
+.field{margin-bottom:13px;}
+.field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.3px;}
+.input,select.input,textarea.input{
+  width:100%;background:var(--surface);border:1.5px solid var(--line);border-radius:12px;
+  padding:13px 13px;color:var(--txt);outline:none;transition:.15s;
+}
+.input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(91,140,255,.18);}
+.input.err{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,92,122,.18);}
+textarea.input{resize:vertical;min-height:64px;}
+select.input{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='none' stroke='%238a96b5' stroke-width='2'><path d='M5 8l5 5 5-5'/></svg>");background-repeat:no-repeat;background-position:right 12px center;padding-right:38px;}
+.hint{font-size:11.5px;color:var(--muted2);margin-top:5px;}
+
+/* Acordeón */
+.acc{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:11px;background:var(--card);}
+.acc>summary{list-style:none;cursor:pointer;padding:14px 15px;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:space-between;}
+.acc>summary::-webkit-details-marker{display:none;}
+.acc>summary .arrow{transition:.2s;color:var(--muted);}
+.acc[open]>summary .arrow{transform:rotate(180deg);}
+.acc .acc-body{padding:0 15px 15px;}
+
+/* Segmented */
+.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px;}
+.seg button{flex:1;padding:9px 4px;border-radius:9px;font-weight:800;font-size:13px;color:var(--muted);}
+.seg button.on{background:var(--brand);color:#fff;}
+
+/* Bottom nav */
+.tabbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:50;
+  margin:0 auto;max-width:540px;
+  background:rgba(10,14,26,.92);backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(6,1fr);
+  padding:8px 4px calc(8px + var(--safe-bot));
+}
+[data-tema="claro"] .tabbar{background:rgba(255,255,255,.92);}
+.tabbar button{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:9.5px;font-weight:700;padding:4px 2px;border-radius:10px;}
+.tabbar button svg{width:23px;height:23px;}
+.tabbar button.on{color:var(--brand2);}
+.tabbar button.on svg{filter:drop-shadow(0 2px 6px rgba(91,140,255,.5));}
+
+/* Calendario */
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+.cal-dow{text-align:center;font-size:10.5px;font-weight:800;color:var(--muted);padding:4px 0;}
+.cal-day{aspect-ratio:1;border-radius:11px;background:var(--surface);border:1px solid var(--line);padding:5px 4px;display:flex;flex-direction:column;align-items:center;position:relative;cursor:pointer;transition:.12s;}
+.cal-day:active{transform:scale(.94);}
+.cal-day.empty{background:transparent;border:none;cursor:default;}
+.cal-day.today{border-color:var(--brand);}
+.cal-day.sel{background:var(--brand);color:#fff;}
+.cal-day .num{font-size:13px;font-weight:800;}
+.cal-day .dots{display:flex;gap:2px;margin-top:auto;flex-wrap:wrap;justify-content:center;}
+.cal-day .dot{width:6px;height:6px;border-radius:50%;}
+.cal-day .euro{font-size:8.5px;font-weight:800;color:var(--accent);}
+.cal-day.sel .euro{color:#cfe0ff;}
+
+/* Tabla resumen */
+.tline{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px;}
+.tline:last-child{border-bottom:none;}
+.tline b{font-weight:800;}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:11px;color:var(--muted);}
+.legend span{display:flex;align-items:center;gap:5px;}
+.legend i{width:9px;height:9px;border-radius:50%;display:inline-block;}
+
+/* Alertas */
+.alert{display:flex;gap:10px;align-items:flex-start;padding:12px 13px;border-radius:13px;font-size:13px;font-weight:600;margin-bottom:9px;border:1px solid;}
+.alert.warn{background:rgba(255,176,32,.1);border-color:rgba(255,176,32,.3);color:#ffce80;}
+.alert.danger{background:rgba(255,92,122,.1);border-color:rgba(255,92,122,.3);color:#ff9caf;}
+.alert.info{background:rgba(76,201,240,.1);border-color:rgba(76,201,240,.3);color:#9be3fb;}
+.alert.ok{background:rgba(25,195,125,.1);border-color:rgba(25,195,125,.3);color:#7fe7ba;}
+.alert .ic{font-size:17px;line-height:1;}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;z-index:100;background:rgba(2,5,12,.66);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center;animation:fade .2s;}
+.modal{background:var(--surface);border:1px solid var(--line2);border-radius:22px 22px 0 0;width:100%;max-width:540px;max-height:92vh;overflow-y:auto;padding:8px 16px calc(24px + var(--safe-bot));animation:up .26s cubic-bezier(.2,.9,.3,1);}
+@keyframes up{from{transform:translateY(100%)}to{transform:none}}
+.modal .grip{width:42px;height:5px;background:var(--line2);border-radius:3px;margin:8px auto 12px;}
+.modal h2{font-size:18px;margin:2px 0 14px;font-weight:850;}
+.modal-x{position:absolute;}
+
+/* Toast */
+#toast-wrap{position:fixed;left:0;right:0;bottom:96px;z-index:200;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
+.toast{background:#1c2541;border:1px solid var(--line2);color:var(--txt);padding:12px 18px;border-radius:14px;font-weight:700;font-size:13.5px;box-shadow:var(--shadow);animation:up .25s;max-width:90%;}
+.toast.ok{border-color:rgba(25,195,125,.5);} .toast.err{border-color:rgba(255,92,122,.5);}
+
+/* Misc */
+.pill-color{width:14px;height:14px;border-radius:5px;display:inline-block;flex:0 0 auto;}
+.empty-state{text-align:center;padding:40px 20px;color:var(--muted);}
+.empty-state .big{font-size:40px;margin-bottom:8px;}
+.list-item{display:flex;align-items:center;gap:12px;padding:13px;background:var(--card);border:1px solid var(--line);border-radius:13px;margin-bottom:9px;}
+.list-item .body{flex:1;min-width:0;}
+.list-item .title{font-weight:800;font-size:14px;}
+.list-item .sub{font-size:12px;color:var(--muted);}
+.search{position:relative;}
+.search svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);}
+.search .input{padding-left:42px;}
+.switch{position:relative;width:46px;height:27px;flex:0 0 auto;}
+.switch input{display:none;}
+.switch .sl{position:absolute;inset:0;background:var(--line2);border-radius:99px;transition:.2s;}
+.switch .sl:before{content:"";position:absolute;width:21px;height:21px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.2s;}
+.switch input:checked+.sl{background:var(--accent);}
+.switch input:checked+.sl:before{transform:translateX(19px);}
+.badge-n{background:var(--danger);color:#fff;font-size:10px;font-weight:800;border-radius:99px;padding:1px 6px;margin-left:6px;}
+.divider{height:1px;background:var(--line);margin:14px 0;}
+.tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;background:var(--surface2);color:var(--muted);}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="brandmark">
+      <div class="logo">H</div>
+      <div>
+        <h1>HorasApp <span style="color:var(--brand2)">Pro</span></h1>
+        <div class="sub" id="topSub">Tu tablero de control laboral</div>
+      </div>
+    </div>
+    <button class="icon-btn" id="btnTema" title="Tema">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1111.2 3 7 7 0 0021 12.8z"/></svg>
+    </button>
+  </header>
+  <main id="view"></main>
+</div>
+
+<nav class="tabbar" id="tabbar"></nav>
+<div id="toast-wrap"></div>
+<div id="modal-root"></div>
+
+<script>
+/* ============================================================
+   HorasApp Pro — Lógica (Vanilla JS, sin dependencias)
+   Almacenamiento local (localStorage) con clave estable.
+   Estructura preparada para migrar a backend (ver capa DB).
+   ============================================================ */
+
+"use strict";
+
+/* ---------- Constantes y catálogos ---------- */
+const STORAGE_KEY = "horasapp_pro_v1";       // clave estable: no cambiar entre versiones
+const APP_VERSION = "1.0.0";
+
+const ESTADOS_JORNADA = [
+  "Planeada","Confirmada","Pendiente de validar","Enviada a ETT",
+  "Aceptada","Rechazada","Corregida","Cancelada"
+];
+const ESTADOS_COBRO = ["Pendiente de cobro","Parcialmente cobrada","Cobrada","En revisión"];
+const ESTADOS_PARTE = ["Sin enviar","Enviado","Aceptado","Rechazado","Corregido"];
+const SERVICIOS_SUGERIDOS = ["Veranda","Txoko","Lobby","Sala","Cocina","Office","Recepción","Limpieza","Auditoría","Extra"];
+const COLORES = ["#5b8cff","#16d6a4","#ffb020","#ff5c7a","#a78bfa","#4cc9f0","#f472b6","#34d399","#fb923c","#60a5fa"];
+const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const DOW = ["L","M","X","J","V","S","D"];
+
+/* ---------- Utilidades ---------- */
+const $ = (s,el=document)=>el.querySelector(s);
+const $$ = (s,el=document)=>[...el.querySelectorAll(s)];
+const uid = ()=> Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const todayISO = ()=> new Date().toISOString().slice(0,10);
+const clamp = (n,a,b)=>Math.max(a,Math.min(b,n));
+const num = v => { const n = parseFloat(String(v).replace(",",".")); return isNaN(n)?0:n; };
+
+function money(n){
+  const c = state?.config?.moneda || "€";
+  const v = (Math.round((n||0)*100)/100).toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2});
+  return `${v} ${c}`;
+}
+function fhoras(n){ return (Math.round((n||0)*100)/100).toLocaleString("es-ES",{maximumFractionDigits:2}) + " h"; }
+function fechaCorta(iso){
+  if(!iso) return "—";
+  const d = new Date(iso+"T00:00:00");
+  return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
+}
+function fechaLarga(iso){
+  const d = new Date(iso+"T00:00:00");
+  const dias=["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  return `${dias[d.getDay()]}, ${d.getDate()} ${MESES[d.getMonth()].toLowerCase()} ${d.getFullYear()}`;
+}
+function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
+
+/* Diferencia horaria (admite turnos que cruzan medianoche) */
+function horasEntre(entrada,salida,descansoMin=0){
+  if(!entrada||!salida) return 0;
+  const [h1,m1]=entrada.split(":").map(Number), [h2,m2]=salida.split(":").map(Number);
+  let min = (h2*60+m2)-(h1*60+m1);
+  if(min<0) min+=24*60;            // cruza medianoche
+  min -= num(descansoMin);
+  return Math.max(0,min/60);
+}
+function redondear(h){
+  const r = state?.config?.redondeoMin || 0;
+  if(!r) return h;
+  const paso = r/60;
+  return Math.round(h/paso)*paso;
+}
+
+/* ============================================================
+   CAPA DB — localStorage (sustituible por Supabase/Firebase)
+   ============================================================ */
+const DB = {
+  load(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return null;
+      return JSON.parse(raw);
+    }catch(e){ console.error("Error leyendo datos",e); return null; }
+  },
+  save(data){
+    try{
+      data.meta = {version:APP_VERSION, savedAt:new Date().toISOString()};
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      return true;
+    }catch(e){ toast("No se pudo guardar (almacenamiento lleno)","err"); return false; }
+  },
+  wipe(){ localStorage.removeItem(STORAGE_KEY); }
+};
+
+/* ---------- Datos de ejemplo (editables / borrables) ---------- */
+function datosEjemplo(){
+  // La app arranca VACÍA: solo existirá lo que tú crees. Ejemplos desactivados.
+  state = { etts:[], hoteles:[], servicios:[], jornadas:[], pagos:[], config:configPorDefecto() };
+  return state;
+  /* (código de ejemplo antiguo — ya no se ejecuta) */
+  const ett1=uid(), ett2=uid();
+  const hot1=uid(), hot2=uid();
+  const srv1=uid(), srv2=uid(), srv3=uid();
+  const hoy = new Date();
+  const d = off => { const x=new Date(hoy); x.setDate(x.getDate()+off); return x.toISOString().slice(0,10); };
+  // Importante: asignamos el estado ANTES de crear jornadas, porque recalcular()
+  // necesita leer state.servicios y state.config para resolver tarifas.
+  state = {
+    etts:[
+      {id:ett1,nombre:"ETT Canarias",color:"#5b8cff",contacto:"María",email:"info@ettcan.es",telefono:"600111222",cif:"B12345678",activa:true,observaciones:""},
+      {id:ett2,nombre:"Servialia",color:"#16d6a4",contacto:"Jorge",email:"rrhh@servialia.es",telefono:"600333444",cif:"B87654321",activa:true,observaciones:""},
+    ],
+    hoteles:[
+      {id:hot1,nombre:"Abama Resort",zona:"Guía de Isora",direccion:"Carretera TF-47",color:"#a78bfa",contacto:"Recepción",ettId:ett1,activo:true,observaciones:""},
+      {id:hot2,nombre:"Hotel Atlántico",zona:"Costa Adeje",direccion:"Av. Litoral",color:"#ffb020",contacto:"Gobernanta",ettId:ett2,activo:true,observaciones:""},
+    ],
+    servicios:[
+      {id:srv1,nombre:"Veranda",ettId:ett1,hotelId:hot1,tarifaNormal:9.5,tarifaNocturna:11,tarifaFestiva:13,tarifaExtra:14,plusTransporte:3,plusDesplazamiento:0,computaNomina:true,requiereValidacion:false,activo:true,color:"#5b8cff"},
+      {id:srv2,nombre:"Txoko",ettId:ett2,hotelId:hot2,tarifaNormal:11,tarifaNocturna:13.5,tarifaFestiva:15,tarifaExtra:16,plusTransporte:0,plusDesplazamiento:5,computaNomina:true,requiereValidacion:true,activo:true,color:"#16d6a4"},
+      {id:srv3,nombre:"Lobby",ettId:ett1,hotelId:hot1,tarifaNormal:10,tarifaNocturna:12,tarifaFestiva:14,tarifaExtra:15,plusTransporte:3,plusDesplazamiento:0,computaNomina:true,requiereValidacion:false,activo:true,color:"#ff5c7a"},
+    ],
+    jornadas:[],
+    pagos:[],
+    config:configPorDefecto(),
+  };
+  state.jornadas = [
+    crearJornada({fecha:d(0),ettId:ett1,hotelId:hot1,servicioId:srv1,horaEntrada:"07:00",horaSalida:"12:00",descanso:0,estadoJornada:"Confirmada",estadoCobro:"Pendiente de cobro",contacto:"María"}),
+    crearJornada({fecha:d(0),ettId:ett2,hotelId:hot2,servicioId:srv2,horaEntrada:"16:00",horaSalida:"20:00",descanso:0,horasFestivas:0,estadoJornada:"Pendiente de validar",estadoCobro:"Pendiente de cobro"}),
+    crearJornada({fecha:d(2),ettId:ett1,hotelId:hot1,servicioId:srv3,horaEntrada:"19:00",horaSalida:"23:30",descanso:30,horasNocturnas:1,estadoJornada:"Planeada",estadoCobro:"Pendiente de cobro"}),
+    crearJornada({fecha:d(-3),ettId:ett1,hotelId:hot1,servicioId:srv1,horaEntrada:"07:00",horaSalida:"11:30",descanso:0,estadoJornada:"Aceptada",estadoCobro:"Cobrada"}),
+    crearJornada({fecha:d(-6),ettId:ett2,hotelId:hot2,servicioId:srv2,horaEntrada:"15:00",horaSalida:"21:00",descanso:30,estadoJornada:"Confirmada",estadoCobro:"Pendiente de cobro"}),
+  ];
+  return state;
+}
+function configPorDefecto(){
+  return {
+    // Deducciones estimadas (editables). Porcentajes tipicos a cuenta del trabajador en España.
+    irpf:2, contingenciasComunes:4.7, desempleo:1.55, formacion:0.1, mei:0.13,
+    prorrata:0, complementos:0,
+    redondeoMin:0, moneda:"€", formatoFecha:"dd/mm/aaaa", tema:"oscuro",
+    // Nube (Supabase). La anon key es pública por diseño; la seguridad la da RLS.
+    supabaseUrl:"", supabaseKey:"", syncAuto:false,
+  };
+}
+/* Crea una jornada con cálculos resueltos */
+function crearJornada(p){
+  const j = Object.assign({
+    id:uid(), fecha:todayISO(), ettId:null, hotelId:null, servicioId:null,
+    horaEntrada:"", horaSalida:"", descanso:0,
+    horasNormales:0, horasNocturnas:0, horasFestivas:0, horasExtra:0,
+    plusTransporte:0, plusDesplazamiento:0, dietas:0, propinas:0,
+    brutoEstimado:0, netoEstimado:0,
+    estadoJornada:"Confirmada", estadoCobro:"Pendiente de cobro", estadoParte:"Sin enviar",
+    contacto:"", referencia:"", incidencia:"", pagoId:null, observaciones:"",
+    createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(),
+  }, p||{});
+  return recalcular(j);
+}
+
+/* ============================================================
+   MOTOR DE CÁLCULO
+   ============================================================ */
+/* Devuelve el conjunto de tarifas VIGENTE para una fecha concreta.
+   Si el servicio tiene historial de periodos (subidas con fecha), elige el
+   periodo cuyo 'desde' es el más reciente <= fecha. Si no hay historial,
+   usa los campos actuales del servicio (compatibilidad hacia atrás). */
+function snapshotTarifas(srv, fecha){
+  const h = srv?.historialTarifas;
+  if(!h || !h.length) return srv;
+  let elegido = h[0]; // h se mantiene ordenado por 'desde' ascendente
+  for(const snap of h){ if((snap.desde||"") <= (fecha||"")) elegido = snap; }
+  return elegido;
+}
+/* Tarifa efectiva: tarifa vigente en la fecha + override por ETT si existe.
+   Campos vacíos del override heredan la tarifa base de ese periodo. */
+function tarifaEfectiva(srv, ettId, fecha){
+  const snap = snapshotTarifas(srv, fecha || todayISO());
+  const base = {
+    tarifaNormal:num(snap?.tarifaNormal), tarifaNocturna:num(snap?.tarifaNocturna),
+    tarifaFestiva:num(snap?.tarifaFestiva), tarifaExtra:num(snap?.tarifaExtra),
+    plusTransporte:num(snap?.plusTransporte), plusDesplazamiento:num(snap?.plusDesplazamiento)
+  };
+  const ov = snap?.tarifasPorEtt?.[ettId];
+  if(!ov) return base;
+  const m = {...base};
+  ["tarifaNormal","tarifaNocturna","tarifaFestiva","tarifaExtra","plusTransporte","plusDesplazamiento"]
+    .forEach(k=>{ if(ov[k]!==undefined && ov[k]!=="" && ov[k]!==null) m[k]=num(ov[k]); });
+  return m;
+}
+function recalcular(j){
+  const srv = getServicio(j.servicioId);
+  // Horas: si no se desglosan, usar diferencia entrada/salida como horas normales
+  let hn=num(j.horasNormales), hnoc=num(j.horasNocturnas), hfes=num(j.horasFestivas), hext=num(j.horasExtra);
+  const totalDesglose = hn+hnoc+hfes+hext;
+  const totalReloj = redondear(horasEntre(j.horaEntrada,j.horaSalida,j.descanso));
+  if(totalDesglose===0 && totalReloj>0){ hn = totalReloj; }
+  // restar nocturnas/festivas/extra del bloque reloj cuando el usuario las especifica junto a entrada/salida
+  else if(totalReloj>0 && (hnoc+hfes+hext)>0 && hn===0){
+    hn = Math.max(0, totalReloj-(hnoc+hfes+hext));
+  }
+  j.horasNormales=hn; j.horasNocturnas=hnoc; j.horasFestivas=hfes; j.horasExtra=hext;
+  j.horasTotales = +(hn+hnoc+hfes+hext).toFixed(2);
+  j.horasPagables = j.horasTotales;
+
+  // Tarifas efectivas según la ETT y la FECHA de la jornada (periodo vigente + override por ETT)
+  const tar = tarifaEfectiva(srv, j.ettId, j.fecha);
+  const tN=tar.tarifaNormal, tNo=tar.tarifaNocturna, tF=tar.tarifaFestiva, tE=tar.tarifaExtra;
+  j.impNormales=+(hn*tN).toFixed(2);
+  j.impNocturnas=+(hnoc*tNo).toFixed(2);
+  j.impFestivas=+(hfes*tF).toFixed(2);
+  j.impExtra=+(hext*tE).toFixed(2);
+  j.tarifaAplicada=tN; // tarifa normal usada, para mostrar en la interfaz
+  // Plus: usa lo de la jornada si existe, si no hereda de la tarifa efectiva
+  const pT = num(j.plusTransporte)|| tar.plusTransporte;
+  const pD = num(j.plusDesplazamiento)|| tar.plusDesplazamiento;
+  j.plusTransporte=pT; j.plusDesplazamiento=pD;
+  j.plusTotal=+(pT+pD).toFixed(2);
+
+  const dietas=num(j.dietas), propinas=num(j.propinas);
+  j.brutoEstimado=+(j.impNormales+j.impNocturnas+j.impFestivas+j.impExtra+pT+pD+dietas+propinas).toFixed(2);
+
+  // Neto estimado: aplica deducciones sobre base imponible (excluye dietas y propinas exentas)
+  const c=state?.config||configPorDefecto();
+  const pctDed=(num(c.irpf)+num(c.contingenciasComunes)+num(c.desempleo)+num(c.formacion)+num(c.mei))/100;
+  const baseImponible=Math.max(0,j.brutoEstimado-dietas-propinas);
+  j.deducciones=+(baseImponible*pctDed).toFixed(2);
+  j.netoEstimado=+(j.brutoEstimado-j.deducciones).toFixed(2);
+  j.updatedAt=new Date().toISOString();
+  return j;
+}
+
+/* ============================================================
+   CHEQUEO DE COHERENCIA — detecta jornadas raras
+   Devuelve [{n:'error'|'warn', t:'texto'}]
+   ============================================================ */
+function problemasJornada(j){
+  const p=[]; const srv=getServicio(j.servicioId);
+  if(j.horaEntrada && j.horaSalida){
+    const [h1,m1]=j.horaEntrada.split(":").map(Number), [h2,m2]=j.horaSalida.split(":").map(Number);
+    if((h2*60+m2)<(h1*60+m1)) p.push({n:"warn",t:"La salida es anterior a la entrada (se cuenta como turno que cruza medianoche)."});
+    const reloj=horasEntre(j.horaEntrada,j.horaSalida,j.descanso);
+    if(reloj<=0 && num(j.descanso)>0) p.push({n:"warn",t:"El descanso es igual o mayor que la duración del turno."});
+  }
+  if(num(j.horasTotales)<=0) p.push({n:"error",t:"La jornada no tiene horas (revisa entrada/salida o el desglose)."});
+  if(num(j.horasTotales)>16) p.push({n:"warn",t:`Jornada muy larga: ${fhoras(j.horasTotales)}. ¿Es correcto?`});
+  if(!j.servicioId || !srv) p.push({n:"error",t:"Sin servicio asignado."});
+  else {
+    const tar=tarifaEfectiva(srv,j.ettId,j.fecha);
+    if(num(tar.tarifaNormal)===0 && num(j.horasTotales)>0) p.push({n:"error",t:"El servicio no tiene tarifa para esta fecha/ETT: el importe sale a 0."});
+  }
+  if(!j.ettId) p.push({n:"warn",t:"Sin ETT asignada."});
+  return p;
+}
+function tieneErrorJornada(j){ return problemasJornada(j).some(x=>x.n==="error"); }
+
+/* ---------- Getters ---------- */
+function getEtt(id){return (state?.etts||[]).find(e=>e.id===id);}
+function getHotel(id){return (state?.hoteles||[]).find(h=>h.id===id);}
+function getServicio(id){return (state?.servicios||[]).find(s=>s.id===id);}
+function getPago(id){return (state?.pagos||[]).find(p=>p.id===id);}
+// Color principal = ETT (para identificar la empresa de un vistazo). El servicio aporta un punto secundario.
+function colorJornada(j){ return getEtt(j.ettId)?.color || getServicio(j.servicioId)?.color || "#5b8cff"; }
+function colorServicioJornada(j){ return getServicio(j.servicioId)?.color || "#5d6a8c"; }
+function nombreServicio(j){ return getServicio(j.servicioId)?.nombre || "Servicio"; }
+function nombreEtt(j){ return getEtt(j.ettId)?.nombre || "Sin ETT"; }
+function nombreHotel(j){ return getHotel(j.hotelId)?.nombre || "—"; }
+
+/* Estado visual -> clase chip */
+function chipClase(estado){
+  const e=(estado||"").toLowerCase();
+  if(e.includes("plane")) return "c-planeada";
+  if(e.includes("confirm")||e.includes("acept")) return "c-confirmada";
+  if(e.includes("pendiente")||e.includes("envi")) return "c-pendiente";
+  if(e.includes("cobr")) return "c-cobrada";
+  if(e.includes("cancel")||e.includes("rechaz")) return "c-cancelada";
+  if(e.includes("revis")||e.includes("correg")||e.includes("parcial")) return "c-revision";
+  return "c-neutra";
+}
+
+/* ---------- Fechas / rangos ---------- */
+function inicioSemana(date){ const d=new Date(date); const dia=(d.getDay()+6)%7; d.setDate(d.getDate()-dia); d.setHours(0,0,0,0); return d; }
+function mismaSemana(iso,ref=new Date()){ const ini=inicioSemana(ref); const fin=new Date(ini); fin.setDate(fin.getDate()+7); const d=new Date(iso+"T00:00:00"); return d>=ini&&d<fin; }
+function mismoMes(iso,ref=new Date()){ const d=new Date(iso+"T00:00:00"); return d.getMonth()===ref.getMonth()&&d.getFullYear()===ref.getFullYear(); }
+function esConfirmada(j){ return ["Confirmada","Aceptada","Enviada a ETT","Corregida"].includes(j.estadoJornada); }
+function esPlaneada(j){ return j.estadoJornada==="Planeada" || j.estadoJornada==="Pendiente de validar"; }
+function esCobrada(j){ return j.estadoCobro==="Cobrada"; }
+
+/* ============================================================
+   ESTADO GLOBAL + ARRANQUE
+   ============================================================ */
+let state = DB.load();
+let primeraVez=false;
+if(!state){ state = datosEjemplo(); primeraVez=true; DB.save(state); }
+// Migración suave: garantizar campos nuevos
+state.config = Object.assign(configPorDefecto(), state.config||{});
+state.pagos = state.pagos||[];
+
+let rutaActual = "inicio";
+let calRef = new Date();        // mes mostrado en calendario
+let calSel = todayISO();        // día seleccionado
+let calVista = "mes";           // mes | semana | dia
+let nominaRef = new Date();     // mes en nómina
+let filtros = {q:"",ett:"",hotel:"",servicio:"",estadoJornada:"",estadoCobro:"",desde:"",hasta:""};
+
+function guardar(){ DB.save(state); if(state.config.syncAuto) programarSync(); }
+function recalcularTodo(){ state.jornadas.forEach(recalcular); guardar(); }
+let _syncT=null;
+function programarSync(){ clearTimeout(_syncT); _syncT=setTimeout(()=>{ nubeSubir(true).catch(()=>{}); }, 1500); }
+
+/* ---------- Toast ---------- */
+function toast(msg,tipo=""){
+  const el=document.createElement("div");
+  el.className="toast "+tipo; el.textContent=msg;
+  $("#toast-wrap").appendChild(el);
+  setTimeout(()=>{el.style.opacity="0";el.style.transition=".3s";},2200);
+  setTimeout(()=>el.remove(),2600);
+}
+
+/* ============================================================
+   NAVEGACIÓN
+   ============================================================ */
+const TABS=[
+  {id:"inicio",label:"Inicio",icon:'<path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/>'},
+  {id:"nuevo",label:"Registrar",icon:'<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>'},
+  {id:"calendario",label:"Calendario",icon:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'},
+  {id:"nomina",label:"Nómina",icon:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'},
+  {id:"historial",label:"Historial",icon:'<path d="M3 3v6h6"/><path d="M3.5 9a9 9 0 102.1-5.6L3 9"/><path d="M12 7v5l4 2"/>'},
+  {id:"ajustes",label:"Ajustes",icon:'<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 00-1.7-1L14.5 2h-4l-.4 2.6a7 7 0 00-1.7 1l-2.3-1-2 3.4L4.1 11a7 7 0 000 2l-2 1.5 2 3.4 2.3-1a7 7 0 001.7 1l.4 2.6h4l.4-2.6a7 7 0 001.7-1l2.3 1 2-3.4-2-1.5a7 7 0 00.1-1z"/>'},
+];
+function renderTabs(){
+  const alertasN = contarAlertas();
+  $("#tabbar").innerHTML = TABS.map(t=>`
+    <button data-tab="${t.id}" class="${rutaActual===t.id?'on':''}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${t.icon}</svg>
+      <span>${t.label}${t.id==='nomina'&&alertasN?`<span class="badge-n">${alertasN}</span>`:''}</span>
+    </button>`).join("");
+  $$("#tabbar button").forEach(b=>b.onclick=()=>navegar(b.dataset.tab));
+}
+function navegar(r){ rutaActual=r; window.scrollTo(0,0); render(); }
+
+function render(){
+  renderTabs();
+  const v=$("#view");
+  if(rutaActual==="inicio") v.innerHTML=vistaInicio();
+  else if(rutaActual==="nuevo"){ abrirFormJornada(); rutaActual="inicio"; renderTabs(); v.innerHTML=vistaInicio(); }
+  else if(rutaActual==="calendario") v.innerHTML=vistaCalendario();
+  else if(rutaActual==="nomina") v.innerHTML=vistaNomina();
+  else if(rutaActual==="historial") v.innerHTML=vistaHistorial();
+  else if(rutaActual==="ajustes") v.innerHTML=vistaAjustes();
+  conectarEventos();
+}
+
+/* ============================================================
+   CÁLCULOS DE RESUMEN
+   ============================================================ */
+function sumar(arr,campo){ return arr.reduce((a,j)=>a+num(j[campo]),0); }
+function resumenPeriodo(jornadas){
+  return {
+    horas:sumar(jornadas,"horasTotales"),
+    bruto:sumar(jornadas,"brutoEstimado"),
+    neto:sumar(jornadas,"netoEstimado"),
+    hn:sumar(jornadas,"horasNormales"), hnoc:sumar(jornadas,"horasNocturnas"),
+    hfes:sumar(jornadas,"horasFestivas"), hext:sumar(jornadas,"horasExtra"),
+    n:jornadas.length,
+  };
+}
+function contarAlertas(){
+  if(!state) return 0;
+  let n=0;
+  const mes=state.jornadas.filter(j=>mismoMes(j.fecha,nominaRef));
+  n+=mes.filter(j=>!esCobrada(j)&&esConfirmada(j)).length>0?1:0;
+  n+=state.jornadas.filter(j=>j.estadoJornada==="Pendiente de validar").length>0?1:0;
+  n+=state.jornadas.filter(j=>{const s=getServicio(j.servicioId);return !s||num(s.tarifaNormal)===0;}).length>0?1:0;
+  n+=state.jornadas.filter(j=>j.incidencia).length>0?1:0;
+  return n;
+}
+
+/* ============================================================
+   VISTA: INICIO
+   ============================================================ */
+function vistaInicio(){
+  const hoy=todayISO();
+  const jHoy=state.jornadas.filter(j=>j.fecha===hoy);
+  const rHoy=resumenPeriodo(jHoy);
+  const jSemConf=state.jornadas.filter(j=>mismaSemana(j.fecha)&&esConfirmada(j));
+  const jSemPlan=state.jornadas.filter(j=>mismaSemana(j.fecha)&&esPlaneada(j));
+  const jMesConf=state.jornadas.filter(j=>mismoMes(j.fecha)&&esConfirmada(j));
+  const rMes=resumenPeriodo(jMesConf);
+  const proximos=state.jornadas.filter(j=>esPlaneada(j)&&new Date(j.fecha)>=new Date(hoy))
+                  .sort((a,b)=>a.fecha.localeCompare(b.fecha)).slice(0,3);
+
+  // Agrupar por ETT (mes)
+  const porEtt={};
+  jMesConf.forEach(j=>{const k=j.ettId||"x";(porEtt[k]=porEtt[k]||[]).push(j);});
+
+  let html=`
+  <section class="hero">
+    <div class="label">Trabajado hoy · ${fechaCorta(hoy)}</div>
+    <div class="big">${fhoras(rHoy.horas)}</div>
+    <div class="sub">Estimado a cobrar hoy: ${money(rHoy.bruto)} · Neto ${money(rHoy.neto)}</div>
+  </section>
+
+  <div class="fab-quick">
+    <button class="btn primary" data-quick="jornada"><span class="ic">＋</span>Registrar jornada</button>
+    <button class="btn" data-quick="turno"><span class="ic">📅</span>Planear turno</button>
+    <button class="btn accent" data-quick="pago"><span class="ic">💶</span>Registrar pago</button>
+  </div>`;
+
+  // Onboarding cuando aún no hay catálogos
+  if(!state.etts.length || !state.servicios.length){
+    html+=`<div class="card" style="border-color:var(--brand);margin-top:14px">
+      <div style="font-weight:850;font-size:16px">👋 Empieza en 3 pasos</div>
+      <div class="muted small" style="margin:4px 0 12px">Configura lo tuyo una vez. Luego registrar una jornada es cuestión de segundos.</div>
+      <button class="btn primary" data-onb="ett" style="margin-bottom:8px">1 · Crear tu ETT / empresa</button>
+      <button class="btn" data-onb="hotel" style="margin-bottom:8px">2 · Crear hotel / cliente</button>
+      <button class="btn" data-onb="servicio">3 · Crear servicio (con el nombre que uses)</button>
+    </div>`;
+  }
+
+  // Alertas
+  const alertas=construirAlertas();
+  if(alertas.length){
+    html+=`<div class="section-title">Avisos</div>`;
+    html+=alertas.map(a=>`<div class="alert ${a.tipo}"><span class="ic">${a.ic}</span><div>${a.txt}</div></div>`).join("");
+  }
+
+  // Revisar esto: jornadas con incoherencias detectadas
+  const revisar=state.jornadas.filter(j=>problemasJornada(j).length)
+                  .sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  if(revisar.length){
+    html+=`<div class="section-title">⚠️ Revisar esto (${revisar.length})</div>`;
+    html+=revisar.slice(0,8).map(j=>{
+      const probs=problemasJornada(j);
+      const hayErr=probs.some(x=>x.n==="error");
+      return `<div class="j-card" data-jornada="${j.id}"><div class="bar" style="background:${hayErr?'var(--danger)':'var(--warn)'}"></div>
+        <div class="body"><div class="ett">${escapeHtml(nombreServicio(j))} <span class="muted small" style="font-weight:600">· ${fechaCorta(j.fecha)} · ${escapeHtml(nombreEtt(j))}</span></div>
+        <div class="meta" style="color:${hayErr?'#ff9caf':'#ffce80'}">${probs.map(x=>escapeHtml(x.t)).join(" · ")}</div></div>
+        <div class="nums"><div class="bruto">${money(j.brutoEstimado)}</div></div></div>`;
+    }).join("");
+  }
+
+  // KPIs semana / mes
+  html+=`<div class="section-title">Resumen</div>
+  <div class="grid2">
+    <div class="kpi"><div class="k-label">Semana confirmada</div><div class="k-val">${fhoras(resumenPeriodo(jSemConf).horas)}</div><div class="small muted">${money(resumenPeriodo(jSemConf).bruto)}</div></div>
+    <div class="kpi"><div class="k-label">Semana planeada</div><div class="k-val">${fhoras(resumenPeriodo(jSemPlan).horas)}</div><div class="small muted">${money(resumenPeriodo(jSemPlan).bruto)}</div></div>
+    <div class="kpi"><div class="k-label">Mes confirmado</div><div class="k-val">${fhoras(rMes.horas)}</div><div class="small muted">${money(rMes.bruto)} bruto</div></div>
+    <div class="kpi"><div class="k-label">Neto estimado mes</div><div class="k-val" style="color:var(--accent)">${money(rMes.neto)}</div><div class="small muted">${rMes.n} jornadas</div></div>
+  </div>`;
+
+  // Jornadas de hoy
+  html+=`<div class="section-title">Hoy</div>`;
+  html+= jHoy.length? jHoy.map(tarjetaJornada).join("")
+        : `<div class="card"><div class="muted small">No hay jornadas registradas hoy. Pulsa <b>Registrar jornada</b>.</div></div>`;
+
+  // Próximos turnos
+  if(proximos.length){
+    html+=`<div class="section-title">Próximos turnos planeados</div>`;
+    html+=proximos.map(j=>tarjetaJornada(j,true)).join("");
+  }
+
+  // Tarjetas por ETT
+  const claves=Object.keys(porEtt);
+  if(claves.length){
+    html+=`<div class="section-title">Por ETT · este mes</div>`;
+    html+=claves.map(k=>{
+      const arr=porEtt[k]; const e=getEtt(k); const r=resumenPeriodo(arr);
+      const pend=arr.filter(j=>!esCobrada(j)).length;
+      return `<div class="j-card"><div class="bar" style="background:${e?.color||'#5b8cff'}"></div>
+        <div class="body"><div class="ett"><span class="pill-color" style="background:${e?.color||'#5b8cff'}"></span>${escapeHtml(e?.nombre||'Sin ETT')}</div>
+        <div class="meta">${arr.length} jornadas · ${fhoras(r.horas)} · ${pend} sin cobrar</div></div>
+        <div class="nums"><div class="bruto">${money(r.bruto)}</div><div class="neto">neto ${money(r.neto)}</div></div></div>`;
+    }).join("");
+  }
+  return html;
+}
+
+function construirAlertas(){
+  const a=[];
+  const mes=state.jornadas.filter(j=>mismoMes(j.fecha));
+  const pendCobro=mes.filter(j=>!esCobrada(j)&&esConfirmada(j));
+  if(pendCobro.length) a.push({tipo:"warn",ic:"💰",txt:`Este mes tienes <b>${pendCobro.length}</b> jornada(s) confirmadas pendientes de cobro (${money(sumar(pendCobro,'brutoEstimado'))}).`});
+  const sinValidar=state.jornadas.filter(j=>j.estadoJornada==="Pendiente de validar");
+  if(sinValidar.length) a.push({tipo:"info",ic:"🕓",txt:`Tienes <b>${sinValidar.length}</b> turno(s) pendientes de validar.`});
+  const sinTarifa=state.jornadas.filter(j=>{const s=getServicio(j.servicioId);return !s||num(s.tarifaNormal)===0;});
+  if(sinTarifa.length) a.push({tipo:"danger",ic:"⚠️",txt:`Hay <b>${sinTarifa.length}</b> jornada(s) con servicio sin tarifa configurada.`});
+  const conInc=state.jornadas.filter(j=>j.incidencia);
+  if(conInc.length) a.push({tipo:"danger",ic:"🚩",txt:`<b>${conInc.length}</b> jornada(s) con incidencia abierta.`});
+  // Diferencia registrado vs cobrado del mes
+  const dif=diferenciaMes(nominaRef);
+  if(Math.abs(dif)>0.5){
+    const t = dif>0 ? `Faltan por cobrar aprox. <b>${money(dif)}</b> respecto a lo registrado este mes.`
+                    : `Has cobrado <b>${money(-dif)}</b> más de lo registrado este mes (revisa o registra jornadas).`;
+    a.push({tipo: dif>0?"warn":"ok", ic:"📊", txt:t});
+  }
+  return a;
+}
+function diferenciaMes(ref){
+  const mes=state.jornadas.filter(j=>mismoMes(j.fecha,ref)&&esConfirmada(j));
+  const brutoConf=sumar(mes,"brutoEstimado");
+  const cobrado=sumar(state.pagos.filter(p=>p.mesCorrespondiente===mesClave(ref)),"importeCobrado");
+  return +(brutoConf-cobrado).toFixed(2);
+}
+function mesClave(ref){ return `${ref.getFullYear()}-${String(ref.getMonth()+1).padStart(2,"0")}`; }
+
+/* Tarjeta de jornada reutilizable */
+function tarjetaJornada(j,mostrarFecha=false){
+  const col=colorJornada(j);
+  return `<div class="j-card" data-jornada="${j.id}">
+    <div class="bar" style="background:${col}"></div>
+    <div class="body">
+      <div class="ett"><span class="pill-color" style="background:${colorServicioJornada(j)}"></span> ${escapeHtml(nombreServicio(j))} <span class="muted small" style="font-weight:600">· ${escapeHtml(nombreEtt(j))}</span></div>
+      <div class="meta">${escapeHtml(nombreHotel(j))}${mostrarFecha?` · ${fechaCorta(j.fecha)}`:''} ${j.horaEntrada?`· ${j.horaEntrada}-${j.horaSalida}`:''}${j.contacto?` · 👤 ${escapeHtml(j.contacto)}`:''}</div>
+      <div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap">
+        <span class="chip dot ${chipClase(j.estadoJornada)}">${j.estadoJornada}</span>
+        <span class="chip dot ${chipClase(j.estadoCobro)}">${j.estadoCobro}</span>
+        ${j.incidencia?'<span class="chip dot c-cancelada">Incidencia</span>':''}
+        ${problemasJornada(j).length?'<span class="chip dot c-cancelada">⚠ revisar</span>':''}
+      </div>
+    </div>
+    <div class="nums">
+      <div class="hrs">${fhoras(j.horasTotales)}</div>
+      <div class="bruto">${money(j.brutoEstimado)}</div>
+      <div class="neto">neto ${money(j.netoEstimado)}</div>
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+   VISTA: CALENDARIO
+   ============================================================ */
+function vistaCalendario(){
+  let html=`<div class="seg" style="margin-bottom:14px">
+    ${["mes","semana","dia"].map(v=>`<button data-calvista="${v}" class="${calVista===v?'on':''}">${v[0].toUpperCase()+v.slice(1)}</button>`).join("")}
+  </div>`;
+  if(calVista==="mes") html+=calendarioMes();
+  else if(calVista==="semana") html+=calendarioSemana();
+  else html+=calendarioDia(calSel);
+  return html;
+}
+function calendarioMes(){
+  const y=calRef.getFullYear(), m=calRef.getMonth();
+  const primero=new Date(y,m,1); const offset=(primero.getDay()+6)%7;
+  const diasMes=new Date(y,m+1,0).getDate();
+  let cells="";
+  for(let i=0;i<offset;i++) cells+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=diasMes;d++){
+    const iso=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const js=state.jornadas.filter(j=>j.fecha===iso);
+    const bruto=sumar(js,"brutoEstimado");
+    const dots=js.slice(0,4).map(j=>`<span class="dot" style="background:${colorJornada(j)}"></span>`).join("");
+    const hoy=iso===todayISO()?"today":"";
+    const sel=iso===calSel?"sel":"";
+    cells+=`<div class="cal-day ${hoy} ${sel}" data-dia="${iso}">
+      <div class="num">${d}</div>
+      ${js.length?`<div class="euro">${Math.round(bruto)}€</div>`:""}
+      <div class="dots">${dots}</div>
+    </div>`;
+  }
+  return `<div class="card">
+    <div class="cal-head">
+      <button class="icon-btn" data-calnav="-1">‹</button>
+      <b>${MESES[m]} ${y}</b>
+      <button class="icon-btn" data-calnav="1">›</button>
+    </div>
+    <div class="cal-grid">${DOW.map(d=>`<div class="cal-dow">${d}</div>`).join("")}</div>
+    <div class="cal-grid" style="margin-top:5px">${cells}</div>
+    <div class="legend">
+      <span><i style="background:var(--info)"></i>Planeado</span>
+      <span><i style="background:var(--ok)"></i>Confirmado</span>
+      <span><i style="background:var(--brand)"></i>Cobrado</span>
+      <span><i style="background:var(--danger)"></i>Incidencia</span>
+    </div>
+  </div>
+  ${detalleDia(calSel)}`;
+}
+function calendarioSemana(){
+  const ini=inicioSemana(calRef);
+  let cards="";
+  for(let i=0;i<7;i++){
+    const dd=new Date(ini); dd.setDate(dd.getDate()+i);
+    const iso=dd.toISOString().slice(0,10);
+    const js=state.jornadas.filter(j=>j.fecha===iso);
+    const r=resumenPeriodo(js);
+    cards+=`<div class="list-item" data-dia="${iso}" style="cursor:pointer">
+      <div class="body"><div class="title">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"][i]} ${dd.getDate()}</div>
+      <div class="sub">${js.length} jornada(s) · ${fhoras(r.horas)}</div></div>
+      <div style="text-align:right"><b>${money(r.bruto)}</b></div></div>`;
+  }
+  return `<div class="card"><div class="cal-head">
+      <button class="icon-btn" data-calnav="-7">‹</button>
+      <b>Semana del ${fechaCorta(ini.toISOString().slice(0,10))}</b>
+      <button class="icon-btn" data-calnav="7">›</button>
+    </div>${cards}</div>${detalleDia(calSel)}`;
+}
+function calendarioDia(iso){ return detalleDia(iso,true); }
+
+function detalleDia(iso,solo=false){
+  const js=state.jornadas.filter(j=>j.fecha===iso).sort((a,b)=>(a.horaEntrada||"").localeCompare(b.horaEntrada||""));
+  const r=resumenPeriodo(js);
+  let html=`<div class="section-title">${fechaLarga(iso)}</div>`;
+  if(solo){
+    html=`<div class="card"><div class="cal-head">
+      <button class="icon-btn" data-dianav="-1">‹</button>
+      <b>${fechaLarga(iso)}</b>
+      <button class="icon-btn" data-dianav="1">›</button></div></div>`+`<div class="section-title">Servicios</div>`;
+  }
+  if(!js.length){
+    html+=`<div class="card"><div class="muted small">Sin jornadas este día.</div>
+      <button class="btn primary sm" style="margin-top:10px" data-nuevo-en="${iso}">＋ Añadir jornada</button></div>`;
+    return html;
+  }
+  html+=`<div class="grid2" style="margin-bottom:6px">
+    <div class="kpi"><div class="k-label">Horas día</div><div class="k-val sm">${fhoras(r.horas)}</div></div>
+    <div class="kpi"><div class="k-label">Estimado</div><div class="k-val sm">${money(r.bruto)}</div></div></div>`;
+  html+=js.map(j=>{
+    const col=colorJornada(j);
+    return `<div class="j-card" data-jornada="${j.id}"><div class="bar" style="background:${col}"></div>
+      <div class="body"><div class="ett">${escapeHtml(nombreServicio(j))} · ${escapeHtml(nombreHotel(j))}</div>
+      <div class="meta">${escapeHtml(nombreEtt(j))} ${j.horaEntrada?`· ${j.horaEntrada}-${j.horaSalida}`:''} · ${fhoras(j.horasTotales)}</div>
+      <div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap">
+        <span class="chip dot ${chipClase(j.estadoJornada)}">${j.estadoJornada}</span>
+        <span class="chip dot ${chipClase(j.estadoCobro)}">${j.estadoCobro}</span></div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn sm" data-edit="${j.id}">✏️ Editar</button>
+        ${esPlaneada(j)?`<button class="btn sm accent" data-validar="${j.id}">✓ Validar</button>`:''}
+        ${!esCobrada(j)?`<button class="btn sm" data-cobrar="${j.id}">💶 Cobrado</button>`:''}
+        <button class="btn sm" data-incidencia="${j.id}">🚩</button>
+      </div></div>
+      <div class="nums"><div class="bruto">${money(j.brutoEstimado)}</div><div class="neto">neto ${money(j.netoEstimado)}</div></div></div>`;
+  }).join("");
+  html+=`<button class="btn primary sm" style="margin-top:6px" data-nuevo-en="${iso}">＋ Añadir otra jornada este día</button>`;
+  return html;
+}
+
+/* ============================================================
+   VISTA: NÓMINA / COBROS
+   ============================================================ */
+function vistaNomina(){
+  const ref=nominaRef; const clave=mesClave(ref);
+  const mesJ=state.jornadas.filter(j=>mismoMes(j.fecha,ref));
+  const conf=mesJ.filter(esConfirmada);
+  const bruto=sumar(conf,"brutoEstimado"), neto=sumar(conf,"netoEstimado");
+  const cobrado=sumar(state.pagos.filter(p=>p.mesCorrespondiente===clave),"importeCobrado");
+  const pendientes=conf.filter(j=>!esCobrada(j));
+  const dif=+(bruto-cobrado).toFixed(2);
+  const c=state.config;
+  const pctSS=(num(c.contingenciasComunes)+num(c.desempleo)+num(c.formacion)+num(c.mei));
+  const baseImp=Math.max(0,bruto-sumar(conf,"dietas")-sumar(conf,"propinas"));
+
+  let html=`<div class="card"><div class="cal-head">
+    <button class="icon-btn" data-nomnav="-1">‹</button>
+    <b>${MESES[ref.getMonth()]} ${ref.getFullYear()}</b>
+    <button class="icon-btn" data-nomnav="1">›</button></div>
+    <div class="grid2">
+      <div class="kpi"><div class="k-label">Bruto estimado</div><div class="k-val">${money(bruto)}</div></div>
+      <div class="kpi"><div class="k-label">Neto estimado</div><div class="k-val" style="color:var(--accent)">${money(neto)}</div></div>
+      <div class="kpi"><div class="k-label">Cobrado</div><div class="k-val sm">${money(cobrado)}</div></div>
+      <div class="kpi"><div class="k-label">Pendiente</div><div class="k-val sm" style="color:${dif>0.5?'var(--warn)':'var(--ok)'}">${money(dif)}</div></div>
+    </div>
+  </div>`;
+
+  // Alertas nómina
+  const al=[];
+  if(pendientes.length) al.push({tipo:"warn",ic:"💰",txt:`Tienes <b>${pendientes.length}</b> jornada(s) sin liquidar este mes (${money(sumar(pendientes,'brutoEstimado'))}).`});
+  if(Math.abs(dif)>0.5) al.push({tipo: dif>0?"warn":"ok",ic:"📊",txt:`Diferencia registrado vs cobrado: <b>${money(dif)}</b>.`});
+  const malPag=conf.filter(j=>{const p=getPago(j.pagoId);return p&&num(p.importeCobrado)>0&&Math.abs(num(j.brutoEstimado)-0)>0&&false;});
+  const sinValidar=mesJ.filter(j=>j.estadoJornada==="Pendiente de validar");
+  if(sinValidar.length) al.push({tipo:"info",ic:"🕓",txt:`<b>${sinValidar.length}</b> turno(s) planeados sin validar este mes.`});
+  if(al.length) html+=`<div class="section-title">Avisos del mes</div>`+al.map(a=>`<div class="alert ${a.tipo}"><span class="ic">${a.ic}</span><div>${a.txt}</div></div>`).join("");
+
+  // Desglose deducciones
+  html+=`<div class="section-title">Deducciones estimadas (editables en Ajustes)</div>
+  <div class="card">
+    <div class="tline"><span>Base imponible (bruto − dietas − propinas)</span><b>${money(baseImp)}</b></div>
+    <div class="tline"><span>Contingencias comunes (${c.contingenciasComunes}%)</span><b>−${money(baseImp*num(c.contingenciasComunes)/100)}</b></div>
+    <div class="tline"><span>Desempleo (${c.desempleo}%)</span><b>−${money(baseImp*num(c.desempleo)/100)}</b></div>
+    <div class="tline"><span>Formación (${c.formacion}%)</span><b>−${money(baseImp*num(c.formacion)/100)}</b></div>
+    <div class="tline"><span>MEI (${c.mei}%)</span><b>−${money(baseImp*num(c.mei)/100)}</b></div>
+    <div class="tline"><span>Seguridad Social total (${pctSS.toFixed(2)}%)</span><b>−${money(baseImp*pctSS/100)}</b></div>
+    <div class="tline"><span>IRPF (${c.irpf}%)</span><b>−${money(baseImp*num(c.irpf)/100)}</b></div>
+    <div class="tline"><span>Dietas + propinas (exentas)</span><b>+${money(sumar(conf,'dietas')+sumar(conf,'propinas'))}</b></div>
+    <div class="tline"><span><b>Neto estimado</b></span><b style="color:var(--accent)">${money(neto)}</b></div>
+  </div>`;
+
+  // Resumen por ETT / hotel / servicio
+  html+=`<div class="section-title">Por ETT</div>`+resumenAgrupado(conf,j=>j.ettId,id=>getEtt(id)?.nombre,id=>getEtt(id)?.color,ref);
+  html+=`<div class="section-title">Por hotel</div>`+resumenAgrupado(conf,j=>j.hotelId,id=>getHotel(id)?.nombre,id=>getHotel(id)?.color);
+  html+=`<div class="section-title">Por servicio</div>`+resumenAgrupado(conf,j=>j.servicioId,id=>getServicio(id)?.nombre,id=>getServicio(id)?.color);
+
+  // Pagos del mes
+  html+=`<div class="section-title">Pagos recibidos · ${MESES[ref.getMonth()]}</div>`;
+  const pagosMes=state.pagos.filter(p=>p.mesCorrespondiente===clave).sort((a,b)=>(b.fechaPago||"").localeCompare(a.fechaPago||""));
+  html+= pagosMes.length? pagosMes.map(p=>`<div class="list-item">
+      <span class="pill-color" style="background:${getEtt(p.ettId)?.color||'#5b8cff'}"></span>
+      <div class="body"><div class="title">${money(p.importeCobrado)} · ${escapeHtml(getEtt(p.ettId)?.nombre||'—')}</div>
+      <div class="sub">${fechaCorta(p.fechaPago)} · ${escapeHtml(p.concepto||'Nómina')}</div></div>
+      <button class="btn sm danger" data-delpago="${p.id}">🗑</button></div>`).join("")
+    : `<div class="card"><div class="muted small">Sin pagos registrados este mes.</div></div>`;
+  html+=`<button class="btn accent" style="margin-top:8px" data-quick="pago">💶 Registrar pago recibido</button>`;
+  return html;
+}
+function resumenAgrupado(jornadas,keyFn,nameFn,colorFn,ref){
+  const g={};
+  jornadas.forEach(j=>{const k=keyFn(j)||"x";(g[k]=g[k]||[]).push(j);});
+  const keys=Object.keys(g);
+  if(!keys.length) return `<div class="card"><div class="muted small">Sin datos.</div></div>`;
+  return `<div class="card">`+keys.map(k=>{
+    const arr=g[k]; const r=resumenPeriodo(arr);
+    const cobrado = ref? sumar(state.pagos.filter(p=>p.ettId===k&&p.mesCorrespondiente===mesClave(ref)),"importeCobrado"):null;
+    const pend = arr.filter(j=>!esCobrada(j)).length;
+    return `<div class="tline"><span><span class="pill-color" style="background:${colorFn(k)||'#5b8cff'};vertical-align:middle"></span> ${escapeHtml(nameFn(k)||'—')} <span class="muted small">(${arr.length})</span></span>
+      <span style="text-align:right"><b>${money(r.bruto)}</b><br><span class="small muted">${fhoras(r.horas)}${pend?` · ${pend} sin cobrar`:''}</span></span></div>`;
+  }).join("")+`</div>`;
+}
+
+/* ============================================================
+   VISTA: HISTORIAL
+   ============================================================ */
+function vistaHistorial(){
+  let js=[...state.jornadas];
+  const f=filtros;
+  if(f.q){const q=f.q.toLowerCase();js=js.filter(j=>[nombreEtt(j),nombreHotel(j),nombreServicio(j),j.observaciones,j.referencia,j.contacto].join(" ").toLowerCase().includes(q));}
+  if(f.ett)js=js.filter(j=>j.ettId===f.ett);
+  if(f.hotel)js=js.filter(j=>j.hotelId===f.hotel);
+  if(f.servicio)js=js.filter(j=>j.servicioId===f.servicio);
+  if(f.estadoJornada)js=js.filter(j=>j.estadoJornada===f.estadoJornada);
+  if(f.estadoCobro)js=js.filter(j=>j.estadoCobro===f.estadoCobro);
+  if(f.desde)js=js.filter(j=>j.fecha>=f.desde);
+  if(f.hasta)js=js.filter(j=>j.fecha<=f.hasta);
+  js.sort((a,b)=>b.fecha.localeCompare(a.fecha)||(b.horaEntrada||"").localeCompare(a.horaEntrada||""));
+  const r=resumenPeriodo(js);
+
+  let html=`<div class="search" style="margin-bottom:10px">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+    <input class="input" id="histQ" placeholder="Buscar ETT, hotel, servicio, nota…" value="${escapeHtml(f.q)}">
+  </div>
+  <details class="acc"><summary>Filtros avanzados <span class="arrow">▾</span></summary><div class="acc-body">
+    <div class="grid2">
+      <div class="field"><label>Desde</label><input type="date" class="input" id="fDesde" value="${f.desde}"></div>
+      <div class="field"><label>Hasta</label><input type="date" class="input" id="fHasta" value="${f.hasta}"></div>
+    </div>
+    <div class="field"><label>ETT</label><select class="input" id="fEtt">${opt(state.etts,f.ett,"todas")}</select></div>
+    <div class="field"><label>Hotel</label><select class="input" id="fHotel">${opt(state.hoteles,f.hotel,"todos")}</select></div>
+    <div class="field"><label>Servicio</label><select class="input" id="fServicio">${opt(state.servicios,f.servicio,"todos")}</select></div>
+    <div class="grid2">
+      <div class="field"><label>Estado jornada</label><select class="input" id="fEstadoJ"><option value="">Todos</option>${ESTADOS_JORNADA.map(e=>`<option ${f.estadoJornada===e?'selected':''}>${e}</option>`).join("")}</select></div>
+      <div class="field"><label>Estado cobro</label><select class="input" id="fEstadoC"><option value="">Todos</option>${ESTADOS_COBRO.map(e=>`<option ${f.estadoCobro===e?'selected':''}>${e}</option>`).join("")}</select></div>
+    </div>
+    <button class="btn ghost sm" id="limpiarFiltros">Limpiar filtros</button>
+  </div></details>`;
+
+  html+=`<div class="grid3" style="margin-bottom:6px">
+    <div class="kpi"><div class="k-label">Registros</div><div class="k-val sm">${js.length}</div></div>
+    <div class="kpi"><div class="k-label">Horas</div><div class="k-val sm">${fhoras(r.horas)}</div></div>
+    <div class="kpi"><div class="k-label">Bruto</div><div class="k-val sm">${money(r.bruto)}</div></div>
+  </div>
+  <div class="btn-row" style="margin-bottom:10px">
+    <button class="btn sm" data-export="csv">⬇ CSV</button>
+    <button class="btn sm" data-export="json">⬇ JSON</button>
+    <button class="btn sm" data-export="pdf">⬇ PDF mes</button>
+  </div>`;
+
+  if(!js.length){ html+=`<div class="empty-state"><div class="big">🔍</div>No hay registros con estos filtros.</div>`; return html; }
+  html+=js.map(j=>tarjetaJornada(j,true)).join("");
+  return html;
+}
+function opt(arr,sel,label){
+  return `<option value="">${"Todos/as".includes("")?("— "+label+" —"):label}</option>`+
+    arr.map(x=>`<option value="${x.id}" ${sel===x.id?'selected':''}>${escapeHtml(x.nombre)}</option>`).join("");
+}
+
+/* ============================================================
+   VISTA: AJUSTES
+   ============================================================ */
+function vistaAjustes(){
+  const c=state.config;
+  return `
+  <details class="acc" open><summary>🏢 ETT / Empresas <span class="arrow">▾</span></summary><div class="acc-body">
+    ${state.etts.map(e=>`<div class="list-item">
+      <span class="pill-color" style="background:${e.color}"></span>
+      <div class="body"><div class="title">${escapeHtml(e.nombre)} ${e.activa?'':'<span class="tag">inactiva</span>'}</div>
+      <div class="sub">${escapeHtml(e.contacto||'')} ${e.telefono?'· '+escapeHtml(e.telefono):''}</div></div>
+      <button class="btn sm" data-editett="${e.id}">✏️</button></div>`).join("")||'<div class="muted small">Sin ETT.</div>'}
+    <button class="btn primary sm" style="margin-top:8px" data-newett>＋ Nueva ETT</button>
+  </div></details>
+
+  <details class="acc"><summary>🏨 Hoteles / Clientes <span class="arrow">▾</span></summary><div class="acc-body">
+    ${state.hoteles.map(h=>`<div class="list-item">
+      <span class="pill-color" style="background:${h.color}"></span>
+      <div class="body"><div class="title">${escapeHtml(h.nombre)} ${h.activo?'':'<span class="tag">inactivo</span>'}</div>
+      <div class="sub">${escapeHtml(h.zona||'')} ${h.ettId?'· '+escapeHtml(getEtt(h.ettId)?.nombre||''):''}</div></div>
+      <button class="btn sm" data-edithotel="${h.id}">✏️</button></div>`).join("")||'<div class="muted small">Sin hoteles.</div>'}
+    <button class="btn primary sm" style="margin-top:8px" data-newhotel>＋ Nuevo hotel</button>
+  </div></details>
+
+  <details class="acc"><summary>🧰 Servicios y tarifas <span class="arrow">▾</span></summary><div class="acc-body">
+    ${state.servicios.map(s=>`<div class="list-item">
+      <span class="pill-color" style="background:${s.color}"></span>
+      <div class="body"><div class="title">${escapeHtml(s.nombre)} ${num(s.tarifaNormal)===0?'<span class="tag" style="color:var(--danger)">sin tarifa</span>':''} ${(s.tarifasPorEtt&&Object.keys(s.tarifasPorEtt).length)?`<span class="tag" style="color:var(--accent)">${Object.keys(s.tarifasPorEtt).length} tarifa/ETT</span>`:''}</div>
+      <div class="sub">${escapeHtml(getHotel(s.hotelId)?.nombre||'—')} · base ${money(s.tarifaNormal)}/h${s.responsable?` · 👤 ${escapeHtml(s.responsable)}`:''}</div></div>
+      <button class="btn sm" data-editservicio="${s.id}">✏️</button></div>`).join("")||'<div class="muted small">Sin servicios.</div>'}
+    <button class="btn primary sm" style="margin-top:8px" data-newservicio>＋ Nuevo servicio</button>
+  </div></details>
+
+  <details class="acc"><summary>💶 Ajustes salariales <span class="arrow">▾</span></summary><div class="acc-body">
+    <div class="grid2">
+      <div class="field"><label>IRPF %</label><input type="number" step="0.01" class="input cfg" data-cfg="irpf" value="${c.irpf}"></div>
+      <div class="field"><label>Contingencias %</label><input type="number" step="0.01" class="input cfg" data-cfg="contingenciasComunes" value="${c.contingenciasComunes}"></div>
+      <div class="field"><label>Desempleo %</label><input type="number" step="0.01" class="input cfg" data-cfg="desempleo" value="${c.desempleo}"></div>
+      <div class="field"><label>Formación %</label><input type="number" step="0.01" class="input cfg" data-cfg="formacion" value="${c.formacion}"></div>
+      <div class="field"><label>MEI %</label><input type="number" step="0.01" class="input cfg" data-cfg="mei" value="${c.mei}"></div>
+      <div class="field"><label>Prorrata pagas %</label><input type="number" step="0.01" class="input cfg" data-cfg="prorrata" value="${c.prorrata}"></div>
+    </div>
+    <div class="hint">Las deducciones se aplican sobre la base imponible (bruto menos dietas y propinas). Ajusta los porcentajes a tu situación real.</div>
+  </div></details>
+
+  <details class="acc"><summary>☁️ Sincronización en la nube <span class="arrow">▾</span></summary><div class="acc-body">
+    <div class="hint">Sincroniza móvil y PC con Supabase (gratis). La primera vez, sigue la guía <b>NUBE.md</b> para pegar tu URL y clave aquí.</div>
+    <div class="field"><label>Supabase URL</label><input class="input cfg" data-cfg="supabaseUrl" value="${escapeHtml(c.supabaseUrl||'')}" placeholder="https://xxxxx.supabase.co"></div>
+    <div class="field"><label>Supabase anon key</label><input class="input cfg" data-cfg="supabaseKey" value="${escapeHtml(c.supabaseKey||'')}" placeholder="eyJhbGciOiJI..."></div>
+    <div id="nubeEstado" class="alert info" style="margin:8px 0"><span class="ic">☁️</span><div>Comprobando estado…</div></div>
+    <div class="field"><label>Tu email</label><input class="input" id="nubeEmail" type="email" placeholder="tucorreo@ejemplo.com"></div>
+    <div class="btn-row"><button class="btn sm" id="nubeEnviar">✉️ Enviar código</button></div>
+    <div class="btn-row" style="margin-top:8px"><input class="input" id="nubeCodigo" placeholder="código del email" style="flex:1"><button class="btn sm primary" id="nubeVerificar" style="flex:0 0 auto">Entrar</button></div>
+    <div class="divider"></div>
+    <div class="btn-row"><button class="btn sm primary" id="nubeSubir">⬆ Subir a la nube</button><button class="btn sm" id="nubeBajar">⬇ Bajar de la nube</button></div>
+    <div class="list-item" style="justify-content:space-between;margin-top:8px"><div class="body"><div class="title">Sincronizar al guardar</div><div class="sub">Sube solo tras cada cambio</div></div>
+      <label class="switch"><input type="checkbox" id="nubeAuto" ${c.syncAuto?'checked':''}><span class="sl"></span></label></div>
+  </div></details>
+
+  <details class="acc"><summary>⚙️ Ajustes de la app <span class="arrow">▾</span></summary><div class="acc-body">
+    <div class="grid2">
+      <div class="field"><label>Moneda</label><input class="input cfg" data-cfg="moneda" value="${c.moneda}"></div>
+      <div class="field"><label>Redondeo horas (min)</label><select class="input cfg" data-cfg="redondeoMin">
+        ${[0,5,10,15,30].map(v=>`<option value="${v}" ${num(c.redondeoMin)===v?'selected':''}>${v?v+' min':'sin redondeo'}</option>`).join("")}</select></div>
+    </div>
+    <div class="list-item" style="justify-content:space-between">
+      <div class="body"><div class="title">Tema claro</div><div class="sub">Cambia la apariencia</div></div>
+      <label class="switch"><input type="checkbox" id="swTema" ${c.tema==='claro'?'checked':''}><span class="sl"></span></label>
+    </div>
+    <div class="divider"></div>
+    <div class="btn-row"><button class="btn sm" data-backup>💾 Copia de seguridad</button><button class="btn sm" data-restore>♻️ Restaurar</button></div>
+    <button class="btn sm" style="margin-top:8px" data-onedrive>☁️ Copia para OneDrive / Drive</button>
+    <div class="btn-row" style="margin-top:8px"><button class="btn sm" data-export="json">⬇ Exportar JSON</button><button class="btn sm" data-export="csv">⬇ Exportar CSV</button></div>
+    <button class="btn danger sm" style="margin-top:8px" data-wipe>🗑 Borrar todos los datos</button>
+    <input type="file" id="fileRestore" accept=".json,.csv" style="display:none">
+    <div class="hint" style="margin-top:10px">Versión ${APP_VERSION} · datos guardados en este dispositivo.</div>
+  </div></details>`;
+}
+
+/* ============================================================
+   MODALES / FORMULARIOS
+   ============================================================ */
+function abrirModal(titulo,contenidoHTML){
+  const root=$("#modal-root");
+  root.innerHTML=`<div class="modal-bg" id="mbg"><div class="modal">
+    <div class="grip"></div><h2>${titulo}</h2>${contenidoHTML}</div></div>`;
+  $("#mbg").onclick=e=>{ if(e.target.id==="mbg") cerrarModal(); };
+}
+function cerrarModal(){ $("#modal-root").innerHTML=""; }
+
+/* ---- Formulario JORNADA ---- */
+function abrirFormJornada(jornada=null, fechaPre=null, servicioPre=null){
+  let j;
+  if(jornada){ j={...jornada}; }
+  else { const srvP=getServicio(servicioPre);
+    j=crearJornada({fecha:fechaPre||todayISO(), servicioId:servicioPre||null, ettId:srvP?.ettId||null, hotelId:srvP?.hotelId||null}); }
+  const editar=!!jornada;
+  const html=`
+  <div class="field"><label>Fecha *</label><input type="date" class="input" id="jFecha" value="${j.fecha}"></div>
+  <div class="grid2">
+    <div class="field"><label>ETT / Empresa *</label><select class="input" id="jEtt">${selOpts(state.etts,j.ettId)}</select></div>
+    <div class="field"><label>Hotel / Cliente</label><select class="input" id="jHotel">${selOpts(state.hoteles,j.hotelId)}</select></div>
+  </div>
+  <div class="field"><label>Servicio / Puesto *</label>
+    <div style="display:flex;gap:8px">
+      <select class="input" id="jServicio" style="flex:1">${selOpts(state.servicios,j.servicioId)}</select>
+      <button type="button" class="btn sm" id="jNewServicio" style="flex:0 0 auto" title="Crear servicio nuevo">＋</button>
+    </div>
+    <div class="hint">¿No está? Toca ＋ y créalo con el nombre que quieras (Veranda, Txoko, Lobby…).</div>
+  </div>
+  <div class="grid2">
+    <div class="field"><label>Entrada</label><input type="time" class="input" id="jEntrada" value="${j.horaEntrada}"></div>
+    <div class="field"><label>Salida</label><input type="time" class="input" id="jSalida" value="${j.horaSalida}"></div>
+  </div>
+  <div class="field"><label>Descanso no remunerado (min)</label><input type="number" class="input" id="jDescanso" value="${j.descanso||0}"></div>
+  <div id="calcPreview" class="alert info" style="margin-bottom:12px"></div>
+
+  <details class="acc"><summary>Desglosar horas (opcional) <span class="arrow">▾</span></summary><div class="acc-body">
+    <div class="grid2">
+      <div class="field"><label>Normales</label><input type="number" step="0.25" class="input jh" id="jHN" value="${j.horasNormales||''}" placeholder="auto"></div>
+      <div class="field"><label>Nocturnas</label><input type="number" step="0.25" class="input jh" id="jHNoc" value="${j.horasNocturnas||''}"></div>
+      <div class="field"><label>Festivas</label><input type="number" step="0.25" class="input jh" id="jHFes" value="${j.horasFestivas||''}"></div>
+      <div class="field"><label>Extra</label><input type="number" step="0.25" class="input jh" id="jHExt" value="${j.horasExtra||''}"></div>
+    </div>
+    <div class="hint">Si dejas "Normales" vacío, se calcula automáticamente desde entrada/salida.</div>
+  </div></details>
+
+  <details class="acc"><summary>Plus, dietas y propinas <span class="arrow">▾</span></summary><div class="acc-body">
+    <div class="grid2">
+      <div class="field"><label>Plus transporte</label><input type="number" step="0.01" class="input jh" id="jPT" value="${j.plusTransporte||''}" placeholder="servicio"></div>
+      <div class="field"><label>Plus desplazam.</label><input type="number" step="0.01" class="input jh" id="jPD" value="${j.plusDesplazamiento||''}" placeholder="servicio"></div>
+      <div class="field"><label>Dietas</label><input type="number" step="0.01" class="input jh" id="jDietas" value="${j.dietas||''}"></div>
+      <div class="field"><label>Propinas</label><input type="number" step="0.01" class="input jh" id="jPropinas" value="${j.propinas||''}"></div>
+    </div>
+  </details>
+
+  <details class="acc"><summary>Estado y referencias <span class="arrow">▾</span></summary><div class="acc-body">
+    <div class="grid2">
+      <div class="field"><label>Estado jornada</label><select class="input" id="jEstadoJ">${ESTADOS_JORNADA.map(e=>`<option ${j.estadoJornada===e?'selected':''}>${e}</option>`).join("")}</select></div>
+      <div class="field"><label>Estado cobro</label><select class="input" id="jEstadoC">${ESTADOS_COBRO.map(e=>`<option ${j.estadoCobro===e?'selected':''}>${e}</option>`).join("")}</select></div>
+    </div>
+    <div class="field"><label>Estado del parte</label><select class="input" id="jEstadoP">${ESTADOS_PARTE.map(e=>`<option ${j.estadoParte===e?'selected':''}>${e}</option>`).join("")}</select></div>
+    <div class="grid2">
+      <div class="field"><label>Responsable</label><input class="input" id="jContacto" value="${escapeHtml(j.contacto||'')}"></div>
+      <div class="field"><label>Nº parte / ref.</label><input class="input" id="jRef" value="${escapeHtml(j.referencia||'')}"></div>
+    </div>
+    <div class="field"><label>Observaciones</label><textarea class="input" id="jObs">${escapeHtml(j.observaciones||'')}</textarea></div>
+  </details>
+
+  <div class="btn-row" style="margin-top:6px">
+    ${editar?`<button class="btn danger" id="jBorrar">🗑 Eliminar</button>`:`<button class="btn" id="jDuplicarUlt">📋 Como anterior</button>`}
+    <button class="btn primary" id="jGuardar">${editar?'Guardar cambios':'Guardar jornada'}</button>
+  </div>`;
+  abrirModal(editar?"Editar jornada":"Nueva jornada", html);
+
+  // Auto-seleccionar hotel/ETT al cambiar servicio
+  const autoServicio=()=>{
+    const s=getServicio($("#jServicio").value);
+    if(s){ if(s.ettId)$("#jEtt").value=s.ettId; if(s.hotelId)$("#jHotel").value=s.hotelId;
+      if(s.responsable && !$("#jContacto").value) $("#jContacto").value=s.responsable; }
+    previewCalc();
+  };
+  $("#jServicio").onchange=autoServicio;
+  // Crear servicio al vuelo: abre el alta y vuelve al registro con él preseleccionado
+  $("#jNewServicio").onclick=()=>abrirFormServicio(null,{volverJornada:{fecha:$("#jFecha").value}});
+  $("#jEtt").onchange=previewCalc;   // al cambiar de ETT, se aplica su tarifa
+  ["jEntrada","jSalida","jDescanso"].forEach(id=>$("#"+id).oninput=previewCalc);
+  $$(".jh").forEach(i=>i.oninput=previewCalc);
+  previewCalc();
+
+  function leerForm(){
+    return {
+      fecha:$("#jFecha").value, ettId:$("#jEtt").value||null, hotelId:$("#jHotel").value||null,
+      servicioId:$("#jServicio").value||null, horaEntrada:$("#jEntrada").value, horaSalida:$("#jSalida").value,
+      descanso:num($("#jDescanso").value),
+      horasNormales:num($("#jHN").value), horasNocturnas:num($("#jHNoc").value),
+      horasFestivas:num($("#jHFes").value), horasExtra:num($("#jHExt").value),
+      plusTransporte:num($("#jPT").value), plusDesplazamiento:num($("#jPD").value),
+      dietas:num($("#jDietas").value), propinas:num($("#jPropinas").value),
+      estadoJornada:$("#jEstadoJ").value, estadoCobro:$("#jEstadoC").value, estadoParte:$("#jEstadoP").value,
+      contacto:$("#jContacto").value, referencia:$("#jRef").value, observaciones:$("#jObs").value,
+    };
+  }
+  function previewCalc(){
+    const tmp=recalcular(Object.assign({},j,leerForm()));
+    const nomEtt=getEtt(tmp.ettId)?.nombre;
+    const probs=problemasJornada(tmp);
+    const aviso = probs.length? `<div class="small" style="color:#ff9caf;margin-top:7px;font-weight:700">⚠ ${probs.map(p=>escapeHtml(p.t)).join(" · ")}</div>` : "";
+    $("#calcPreview").innerHTML=`<span class="ic">⚡</span><div>
+      <b>${fhoras(tmp.horasTotales)}</b> · Bruto <b>${money(tmp.brutoEstimado)}</b> · Neto <b>${money(tmp.netoEstimado)}</b>
+      <br><span class="small">Tarifa aplicada <b>${money(tmp.tarifaAplicada||0)}/h</b>${nomEtt?` (${escapeHtml(nomEtt)})`:''} · Noct ${money(tmp.impNocturnas)} · Fest ${money(tmp.impFestivas)} · Extra ${money(tmp.impExtra)} · Plus ${money(tmp.plusTotal)}</span>${aviso}</div>`;
+  }
+  $("#jGuardar").onclick=()=>{
+    const datos=leerForm();
+    if(!datos.fecha){toast("Falta la fecha","err");$("#jFecha").classList.add("err");return;}
+    if(!datos.servicioId){toast("Selecciona un servicio","err");$("#jServicio").classList.add("err");return;}
+    Object.assign(j,datos); recalcular(j);
+    const probs=problemasJornada(j);
+    if(editar){ const i=state.jornadas.findIndex(x=>x.id===j.id); state.jornadas[i]=j; }
+    else state.jornadas.push(j);
+    guardar(); cerrarModal();
+    if(probs.length) toast(`Guardada con ${probs.length} aviso(s) — revísala en Inicio`,"err");
+    else toast(editar?"Jornada actualizada":"Jornada guardada ✓","ok");
+    render();
+  };
+  if(editar){
+    $("#jBorrar").onclick=()=>confirmar("¿Eliminar esta jornada?",()=>{
+      state.jornadas=state.jornadas.filter(x=>x.id!==j.id); guardar(); cerrarModal(); toast("Jornada eliminada"); render();
+    });
+  }else{
+    $("#jDuplicarUlt").onclick=()=>{
+      const ult=[...state.jornadas].sort((a,b)=>b.createdAt.localeCompare(a.createdAt))[0];
+      if(!ult){toast("No hay jornada anterior","err");return;}
+      ["jEtt","jHotel","jServicio","jEntrada","jSalida"].forEach((id,i)=>{
+        const campos=["ettId","hotelId","servicioId","horaEntrada","horaSalida"];
+        $("#"+id).value=ult[campos[i]]||"";
+      });
+      $("#jDescanso").value=ult.descanso||0; previewCalc(); toast("Cargado desde la anterior");
+    };
+  }
+}
+function selOpts(arr,sel){
+  return `<option value="">—</option>`+arr.filter(x=>x.activa!==false&&x.activo!==false)
+    .map(x=>`<option value="${x.id}" ${sel===x.id?'selected':''}>${escapeHtml(x.nombre)}</option>`).join("");
+}
+
+/* ---- Formulario PAGO ---- */
+function abrirFormPago(){
+  const html=`
+  <div class="field"><label>Importe cobrado *</label><input type="number" step="0.01" class="input" id="pImporte" placeholder="0,00"></div>
+  <div class="grid2">
+    <div class="field"><label>Fecha de pago</label><input type="date" class="input" id="pFecha" value="${todayISO()}"></div>
+    <div class="field"><label>Mes correspondiente</label><input type="month" class="input" id="pMes" value="${mesClave(nominaRef)}"></div>
+  </div>
+  <div class="field"><label>Empresa que pagó</label><select class="input" id="pEtt">${selOpts(state.etts,null)}</select></div>
+  <div class="field"><label>Concepto</label><input class="input" id="pConcepto" placeholder="Nómina, anticipo, extra…" value="Nómina"></div>
+  <div class="field"><label>Observaciones</label><textarea class="input" id="pObs"></textarea></div>
+  <button class="btn accent" id="pGuardar">Guardar pago</button>`;
+  abrirModal("Registrar pago recibido", html);
+  $("#pGuardar").onclick=()=>{
+    const imp=num($("#pImporte").value);
+    if(imp<=0){toast("Indica un importe","err");$("#pImporte").classList.add("err");return;}
+    const mes=$("#pMes").value;
+    const ettId=$("#pEtt").value||null;
+    const brutoMes=sumar(state.jornadas.filter(j=>j.ettId===ettId&&j.fecha.startsWith(mes)&&esConfirmada(j)),"brutoEstimado");
+    state.pagos.push({
+      id:uid(), fechaPago:$("#pFecha").value, ettId, mesCorrespondiente:mes,
+      importeCobrado:imp, concepto:$("#pConcepto").value, jornadasAsociadas:[],
+      diferencia:+(brutoMes-imp).toFixed(2), observaciones:$("#pObs").value, createdAt:new Date().toISOString(),
+    });
+    guardar(); cerrarModal(); toast("Pago registrado ✓","ok"); render();
+  };
+}
+
+/* ---- Formularios de catálogos (ETT/Hotel/Servicio) ---- */
+function abrirFormEtt(ett=null){
+  const e=ett||{nombre:"",color:COLORES[state.etts.length%COLORES.length],contacto:"",email:"",telefono:"",cif:"",activa:true,observaciones:""};
+  abrirModal(ett?"Editar ETT":"Nueva ETT",`
+    <div class="field"><label>Nombre *</label><input class="input" id="eNombre" value="${escapeHtml(e.nombre)}"></div>
+    <div class="field"><label>Color</label>${colorPicker("eColor",e.color)}</div>
+    <div class="grid2">
+      <div class="field"><label>Contacto</label><input class="input" id="eContacto" value="${escapeHtml(e.contacto||'')}"></div>
+      <div class="field"><label>Teléfono</label><input class="input" id="eTel" value="${escapeHtml(e.telefono||'')}"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Email</label><input class="input" id="eEmail" value="${escapeHtml(e.email||'')}"></div>
+      <div class="field"><label>CIF/NIF</label><input class="input" id="eCif" value="${escapeHtml(e.cif||'')}"></div>
+    </div>
+    <div class="field"><label>Observaciones</label><textarea class="input" id="eObs">${escapeHtml(e.observaciones||'')}</textarea></div>
+    <div class="list-item" style="justify-content:space-between"><div class="body"><div class="title">Activa</div></div>
+      <label class="switch"><input type="checkbox" id="eActiva" ${e.activa?'checked':''}><span class="sl"></span></label></div>
+    <div class="btn-row" style="margin-top:8px">
+      ${ett?`<button class="btn danger" id="eBorrar">🗑 Eliminar</button>`:''}
+      <button class="btn primary" id="eGuardar">Guardar</button></div>`);
+  $("#eGuardar").onclick=()=>{
+    const nombre=$("#eNombre").value.trim();
+    if(!nombre){toast("Falta el nombre","err");return;}
+    const obj={nombre,color:colorSel("eColor"),contacto:$("#eContacto").value,telefono:$("#eTel").value,
+      email:$("#eEmail").value,cif:$("#eCif").value,observaciones:$("#eObs").value,activa:$("#eActiva").checked};
+    if(ett)Object.assign(ett,obj); else state.etts.push(Object.assign({id:uid()},obj));
+    guardar();cerrarModal();toast("ETT guardada ✓","ok");render();
+  };
+  if(ett)$("#eBorrar").onclick=()=>confirmar("¿Eliminar ETT? (las jornadas quedan sin ETT)",()=>{
+    state.etts=state.etts.filter(x=>x.id!==ett.id);guardar();cerrarModal();toast("ETT eliminada");render();});
+}
+function abrirFormHotel(hotel=null){
+  const h=hotel||{nombre:"",zona:"",direccion:"",color:COLORES[(state.hoteles.length+2)%COLORES.length],contacto:"",ettId:null,activo:true,observaciones:""};
+  abrirModal(hotel?"Editar hotel":"Nuevo hotel",`
+    <div class="field"><label>Nombre *</label><input class="input" id="hNombre" value="${escapeHtml(h.nombre)}"></div>
+    <div class="field"><label>Color</label>${colorPicker("hColor",h.color)}</div>
+    <div class="grid2">
+      <div class="field"><label>Zona</label><input class="input" id="hZona" value="${escapeHtml(h.zona||'')}"></div>
+      <div class="field"><label>Contacto</label><input class="input" id="hContacto" value="${escapeHtml(h.contacto||'')}"></div>
+    </div>
+    <div class="field"><label>Dirección</label><input class="input" id="hDir" value="${escapeHtml(h.direccion||'')}"></div>
+    <div class="field"><label>ETT relacionada</label><select class="input" id="hEtt">${selOpts(state.etts,h.ettId)}</select></div>
+    <div class="field"><label>Observaciones</label><textarea class="input" id="hObs">${escapeHtml(h.observaciones||'')}</textarea></div>
+    <div class="list-item" style="justify-content:space-between"><div class="body"><div class="title">Activo</div></div>
+      <label class="switch"><input type="checkbox" id="hActivo" ${h.activo?'checked':''}><span class="sl"></span></label></div>
+    <div class="btn-row" style="margin-top:8px">
+      ${hotel?`<button class="btn danger" id="hBorrar">🗑 Eliminar</button>`:''}
+      <button class="btn primary" id="hGuardar">Guardar</button></div>`);
+  $("#hGuardar").onclick=()=>{
+    const nombre=$("#hNombre").value.trim();
+    if(!nombre){toast("Falta el nombre","err");return;}
+    const obj={nombre,color:colorSel("hColor"),zona:$("#hZona").value,direccion:$("#hDir").value,
+      contacto:$("#hContacto").value,ettId:$("#hEtt").value||null,observaciones:$("#hObs").value,activo:$("#hActivo").checked};
+    if(hotel)Object.assign(hotel,obj); else state.hoteles.push(Object.assign({id:uid()},obj));
+    guardar();cerrarModal();toast("Hotel guardado ✓","ok");render();
+  };
+  if(hotel)$("#hBorrar").onclick=()=>confirmar("¿Eliminar hotel?",()=>{
+    state.hoteles=state.hoteles.filter(x=>x.id!==hotel.id);guardar();cerrarModal();toast("Hotel eliminado");render();});
+}
+function abrirFormServicio(servicio=null, opts={}){
+  const s=servicio||{nombre:"",ettId:null,hotelId:null,responsable:"",tarifaNormal:0,tarifaNocturna:0,tarifaFestiva:0,tarifaExtra:0,plusTransporte:0,plusDesplazamiento:0,computaNomina:true,requiereValidacion:false,activo:true,color:COLORES[(state.servicios.length+4)%COLORES.length]};
+  abrirModal(servicio?"Editar servicio":"Nuevo servicio",`
+    <div class="field"><label>Nombre del servicio / puesto *</label><input class="input" id="sNombre" value="${escapeHtml(s.nombre)}" list="sugServicios" placeholder="Escribe el que quieras: Veranda, Txoko, Lobby…">
+      <datalist id="sugServicios">${SERVICIOS_SUGERIDOS.map(x=>`<option value="${x}">`).join("")}</datalist>
+      <div class="hint">Nombre libre: pon el que uses tú para identificar el sector.</div></div>
+    <div class="field"><label>Color</label>${colorPicker("sColor",s.color)}</div>
+    <div class="grid2">
+      <div class="field"><label>ETT</label><select class="input" id="sEtt">${selOpts(state.etts,s.ettId)}</select></div>
+      <div class="field"><label>Hotel</label><select class="input" id="sHotel">${selOpts(state.hoteles,s.hotelId)}</select></div>
+    </div>
+    <div class="field"><label>Responsable del sector</label><input class="input" id="sResp" value="${escapeHtml(s.responsable||'')}" placeholder="p. ej. jefe de sala, gobernanta, encargado…">
+      <div class="hint">Se rellenará solo como responsable de la jornada cuando elijas este servicio.</div></div>
+    <div class="grid2">
+      <div class="field"><label>Tarifa normal €/h</label><input type="number" step="0.01" class="input" id="sTN" value="${s.tarifaNormal||''}"></div>
+      <div class="field"><label>Tarifa nocturna €/h</label><input type="number" step="0.01" class="input" id="sTNo" value="${s.tarifaNocturna||''}"></div>
+      <div class="field"><label>Tarifa festiva €/h</label><input type="number" step="0.01" class="input" id="sTF" value="${s.tarifaFestiva||''}"></div>
+      <div class="field"><label>Tarifa extra €/h</label><input type="number" step="0.01" class="input" id="sTE" value="${s.tarifaExtra||''}"></div>
+      <div class="field"><label>Plus transporte</label><input type="number" step="0.01" class="input" id="sPT" value="${s.plusTransporte||''}"></div>
+      <div class="field"><label>Plus desplazam.</label><input type="number" step="0.01" class="input" id="sPD" value="${s.plusDesplazamiento||''}"></div>
+    </div>
+    <details class="acc"><summary>📅 Vigencia de tarifas (subidas con fecha) <span class="arrow">▾</span></summary><div class="acc-body">
+      <div class="hint">Cuando te suban el precio: edita las tarifas de arriba, activa <b>"Es una subida"</b> y pon desde qué fecha rige. Las jornadas anteriores conservan la tarifa antigua; las nuevas usan la nueva.</div>
+      <div class="grid2" style="margin-top:8px">
+        <div class="field"><label>Vigente desde</label><input type="date" class="input" id="sVigDesde" value="${todayISO()}"></div>
+        <div class="list-item" style="justify-content:space-between"><div class="body"><div class="title">Es una subida</div><div class="sub">Guardar como periodo nuevo</div></div>
+          <label class="switch"><input type="checkbox" id="sEsSubida"><span class="sl"></span></label></div>
+      </div>
+      ${(s.historialTarifas&&s.historialTarifas.length)?`<div class="divider"></div><div class="small muted" style="margin-bottom:6px">Periodos guardados:</div>`+
+        [...s.historialTarifas].sort((a,b)=>(a.desde||'').localeCompare(b.desde||'')).map((p,i)=>`<div class="tline"><span>Desde ${fechaCorta(p.desde)} ${(s.historialTarifas.length>1)?`<button class="btn sm ghost" style="padding:2px 8px;margin-left:6px" data-delperiodo="${i}">🗑</button>`:''}</span><b>${money(num(p.tarifaNormal))}/h${(p.tarifasPorEtt&&Object.keys(p.tarifasPorEtt).length)?` · +${Object.keys(p.tarifasPorEtt).length} ETT`:''}</b></div>`).join("")
+        :'<div class="hint">Aún no hay periodos: al guardar se crea el primero.</div>'}
+    </div></details>
+    <details class="acc"><summary>💶 Tarifas por ETT (mismo puesto, distinto precio) <span class="arrow">▾</span></summary><div class="acc-body">
+      <div class="hint">Si una ETT te paga distinto por este mismo puesto, pon aquí su precio. Lo que dejes en blanco usa la tarifa base de arriba.</div>
+      ${state.etts.filter(e=>e.activa!==false).map(e=>{
+        const ov=(s.tarifasPorEtt&&s.tarifasPorEtt[e.id])||{};
+        const f=(k,lbl)=>`<div class="field"><label>${lbl}</label><input type="number" step="0.01" class="input setarifa" data-ett="${e.id}" data-k="${k}" value="${ov[k]??''}" placeholder="base ${num(s[k])||0}"></div>`;
+        return `<div class="card" style="margin-top:8px">
+          <div style="font-weight:800;margin-bottom:8px"><span class="pill-color" style="background:${e.color};vertical-align:middle"></span> ${escapeHtml(e.nombre)}</div>
+          <div class="grid2">${f("tarifaNormal","Normal €/h")}${f("tarifaNocturna","Nocturna €/h")}${f("tarifaFestiva","Festiva €/h")}${f("tarifaExtra","Extra €/h")}${f("plusTransporte","Plus transporte")}${f("plusDesplazamiento","Plus desplazam.")}</div>
+        </div>`;
+      }).join("")||'<div class="muted small">Crea ETT primero para asignarles tarifas.</div>'}
+    </div></details>
+    <div class="list-item" style="justify-content:space-between"><div class="body"><div class="title">Computa para nómina</div></div>
+      <label class="switch"><input type="checkbox" id="sComputa" ${s.computaNomina?'checked':''}><span class="sl"></span></label></div>
+    <div class="list-item" style="justify-content:space-between"><div class="body"><div class="title">Requiere validación</div></div>
+      <label class="switch"><input type="checkbox" id="sValida" ${s.requiereValidacion?'checked':''}><span class="sl"></span></label></div>
+    <div class="btn-row" style="margin-top:8px">
+      ${servicio?`<button class="btn danger" id="sBorrar">🗑 Eliminar</button>`:''}
+      <button class="btn primary" id="sGuardar">Guardar</button></div>`);
+  $("#sGuardar").onclick=()=>{
+    const nombre=$("#sNombre").value.trim();
+    if(!nombre){toast("Falta el nombre","err");return;}
+    // Recoger overrides de tarifa por ETT (solo los campos rellenados)
+    const tpe={};
+    $$(".setarifa").forEach(inp=>{
+      const v=String(inp.value).trim(); if(v==="")return;
+      const id=inp.dataset.ett, k=inp.dataset.k;
+      (tpe[id]=tpe[id]||{})[k]=num(v);
+    });
+    // --- Tarifas con vigencia por fecha (historial de periodos) ---
+    const rateNow={
+      tarifaNormal:num($("#sTN").value),tarifaNocturna:num($("#sTNo").value),tarifaFestiva:num($("#sTF").value),
+      tarifaExtra:num($("#sTE").value),plusTransporte:num($("#sPT").value),plusDesplazamiento:num($("#sPD").value),
+      tarifasPorEtt:tpe
+    };
+    const vigDesde=$("#sVigDesde").value||todayISO();
+    const esSubida=$("#sEsSubida").checked;
+    let hist = (servicio && Array.isArray(servicio.historialTarifas)) ? servicio.historialTarifas.map(p=>({...p})) : null;
+    if(servicio && !hist){
+      // Semilla: las tarifas que tenía el servicio aplicaban "desde siempre"
+      hist=[{desde:"2000-01-01",tarifaNormal:num(servicio.tarifaNormal),tarifaNocturna:num(servicio.tarifaNocturna),
+        tarifaFestiva:num(servicio.tarifaFestiva),tarifaExtra:num(servicio.tarifaExtra),
+        plusTransporte:num(servicio.plusTransporte),plusDesplazamiento:num(servicio.plusDesplazamiento),
+        tarifasPorEtt:servicio.tarifasPorEtt||{}}];
+    }
+    if(!hist) hist=[]; // servicio nuevo
+    if(esSubida) hist.push({desde:vigDesde,...rateNow});                       // periodo nuevo
+    else if(hist.length) Object.assign(hist[hist.length-1], rateNow);          // corrige el último periodo
+    else hist.push({desde:vigDesde,...rateNow});
+    hist.sort((a,b)=>(a.desde||"").localeCompare(b.desde||""));
+    const latest=hist[hist.length-1];
+    const obj={nombre,color:colorSel("sColor"),ettId:$("#sEtt").value||null,hotelId:$("#sHotel").value||null,
+      responsable:$("#sResp").value,
+      tarifaNormal:num(latest.tarifaNormal),tarifaNocturna:num(latest.tarifaNocturna),tarifaFestiva:num(latest.tarifaFestiva),
+      tarifaExtra:num(latest.tarifaExtra),plusTransporte:num(latest.plusTransporte),plusDesplazamiento:num(latest.plusDesplazamiento),
+      tarifasPorEtt:latest.tarifasPorEtt||{}, historialTarifas:hist,
+      computaNomina:$("#sComputa").checked,requiereValidacion:$("#sValida").checked,activo:true};
+    let nuevoId=null;
+    if(servicio)Object.assign(servicio,obj); else { nuevoId=uid(); state.servicios.push(Object.assign({id:nuevoId},obj)); }
+    recalcularTodo();cerrarModal();toast(esSubida?"Subida guardada con fecha ✓":"Servicio guardado ✓","ok");
+    // Si veníamos del registro de jornada, volvemos con el servicio nuevo ya elegido
+    if(nuevoId && opts.volverJornada){ abrirFormJornada(null, opts.volverJornada.fecha, nuevoId); }
+    else render();
+  };
+  // Borrar un periodo de tarifa concreto
+  $$("[data-delperiodo]").forEach(b=>b.onclick=()=>{
+    if(!servicio||!servicio.historialTarifas)return;
+    const arr=[...servicio.historialTarifas].sort((a,b)=>(a.desde||"").localeCompare(b.desde||""));
+    arr.splice(+b.dataset.delperiodo,1);
+    servicio.historialTarifas=arr;
+    const last=arr[arr.length-1];
+    if(last){Object.assign(servicio,{tarifaNormal:last.tarifaNormal,tarifaNocturna:last.tarifaNocturna,tarifaFestiva:last.tarifaFestiva,tarifaExtra:last.tarifaExtra,plusTransporte:last.plusTransporte,plusDesplazamiento:last.plusDesplazamiento,tarifasPorEtt:last.tarifasPorEtt||{}});}
+    recalcularTodo();toast("Periodo eliminado");abrirFormServicio(servicio);
+  });
+  if(servicio)$("#sBorrar").onclick=()=>confirmar("¿Eliminar servicio?",()=>{
+    state.servicios=state.servicios.filter(x=>x.id!==servicio.id);guardar();cerrarModal();toast("Servicio eliminado");render();});
+}
+function colorPicker(id,sel){
+  return `<div id="${id}" style="display:flex;gap:8px;flex-wrap:wrap">`+
+    COLORES.map(c=>`<button type="button" data-c="${c}" style="width:30px;height:30px;border-radius:9px;background:${c};border:3px solid ${c===sel?'#fff':'transparent'}"></button>`).join("")+`</div>`;
+}
+function colorSel(id){ return $(`#${id} button[data-c]`)?.dataset.cActive || window["_color_"+id] || $(`#${id}`).dataset.sel || COLORES[0]; }
+
+/* ---- Confirmación ---- */
+function confirmar(msg,onOk){
+  abrirModal("Confirmar",`<p style="color:var(--muted)">${msg}</p>
+    <div class="btn-row" style="margin-top:14px"><button class="btn" id="cNo">Cancelar</button><button class="btn danger" id="cSi">Sí, continuar</button></div>`);
+  $("#cNo").onclick=cerrarModal;
+  $("#cSi").onclick=()=>{cerrarModal();onOk();};
+}
+function abrirIncidencia(j){
+  abrirModal("Incidencia",`<div class="field"><label>Describe la incidencia</label>
+    <textarea class="input" id="incTxt">${escapeHtml(j.incidencia||'')}</textarea></div>
+    <div class="btn-row">${j.incidencia?'<button class="btn" id="incQuitar">Quitar incidencia</button>':''}
+    <button class="btn primary" id="incGuardar">Guardar</button></div>`);
+  $("#incGuardar").onclick=()=>{j.incidencia=$("#incTxt").value;guardar();cerrarModal();toast("Incidencia guardada");render();};
+  if(j.incidencia)$("#incQuitar").onclick=()=>{j.incidencia="";guardar();cerrarModal();toast("Incidencia quitada");render();};
+}
+
+/* ============================================================
+   EXPORTAR / IMPORTAR
+   ============================================================ */
+function descargar(nombre,contenido,tipo="text/plain"){
+  const blob=new Blob([contenido],{type:tipo});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download=nombre; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function exportarJSON(){ descargar(`horasapp-backup-${todayISO()}.json`, JSON.stringify(state,null,2), "application/json"); toast("JSON exportado ✓","ok"); }
+function exportarCSV(){
+  const cab=["Fecha","ETT","Hotel","Servicio","Entrada","Salida","Horas","Bruto","Neto","Estado","Cobro","Observaciones"];
+  const filas=[...state.jornadas].sort((a,b)=>a.fecha.localeCompare(b.fecha)).map(j=>[
+    j.fecha,nombreEtt(j),nombreHotel(j),nombreServicio(j),j.horaEntrada,j.horaSalida,
+    j.horasTotales,j.brutoEstimado,j.netoEstimado,j.estadoJornada,j.estadoCobro,(j.observaciones||"").replace(/[\n;]/g," ")
+  ]);
+  const csv=[cab,...filas].map(r=>r.map(c=>`"${String(c??"").replace(/"/g,'""')}"`).join(";")).join("\n");
+  descargar(`horasapp-${todayISO()}.csv`, "﻿"+csv, "text/csv"); toast("CSV exportado ✓","ok");
+}
+function exportarPDF(){
+  // PDF simple vía ventana imprimible (sin dependencias). El usuario elige "Guardar como PDF".
+  const ref=nominaRef; const clave=mesClave(ref);
+  const mesJ=state.jornadas.filter(j=>mismoMes(j.fecha,ref)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const conf=mesJ.filter(esConfirmada);
+  const r=resumenPeriodo(conf);
+  const cobrado=sumar(state.pagos.filter(p=>p.mesCorrespondiente===clave),"importeCobrado");
+  const rows=mesJ.map(j=>`<tr><td>${fechaCorta(j.fecha)}</td><td>${escapeHtml(nombreEtt(j))}</td><td>${escapeHtml(nombreHotel(j))}</td><td>${escapeHtml(nombreServicio(j))}</td><td>${fhoras(j.horasTotales)}</td><td style="text-align:right">${money(j.brutoEstimado)}</td><td>${j.estadoCobro}</td></tr>`).join("");
+  const w=window.open("","_blank");
+  w.document.write(`<html><head><title>Resumen ${MESES[ref.getMonth()]} ${ref.getFullYear()}</title>
+    <style>body{font-family:Arial;padding:24px;color:#111}h1{margin:0}table{width:100%;border-collapse:collapse;margin-top:14px;font-size:12px}
+    th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}th{background:#eef}.tot{display:flex;gap:24px;margin-top:10px;font-size:14px}
+    .tot b{display:block;font-size:20px}</style></head><body>
+    <h1>HorasApp Pro — ${MESES[ref.getMonth()]} ${ref.getFullYear()}</h1>
+    <div class="tot"><div>Horas<b>${fhoras(r.horas)}</b></div><div>Bruto<b>${money(r.bruto)}</b></div>
+    <div>Neto estimado<b>${money(r.neto)}</b></div><div>Cobrado<b>${money(cobrado)}</b></div>
+    <div>Diferencia<b>${money(r.bruto-cobrado)}</b></div></div>
+    <table><thead><tr><th>Fecha</th><th>ETT</th><th>Hotel</th><th>Servicio</th><th>Horas</th><th>Bruto</th><th>Cobro</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan=7>Sin jornadas</td></tr>'}</tbody></table>
+    <p style="margin-top:20px;color:#888;font-size:11px">Generado por HorasApp Pro · ${todayISO()}</p>
+    <script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.close();
+}
+function importarArchivo(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      if(file.name.endsWith(".json")){
+        const data=JSON.parse(e.target.result);
+        if(!data.jornadas){toast("Archivo no válido","err");return;}
+        confirmar("¿Reemplazar TODOS los datos con este backup?",()=>{
+          state=Object.assign(datosEjemplo(),data);
+          state.config=Object.assign(configPorDefecto(),data.config||{});
+          recalcularTodo();aplicarTema();toast("Datos restaurados ✓","ok");render();
+        });
+      }else if(file.name.endsWith(".csv")){
+        toast("CSV detectado: usa JSON para restaurar completo","err");
+      }
+    }catch(err){toast("Error al leer el archivo","err");}
+  };
+  reader.readAsText(file);
+}
+
+/* ============================================================
+   NUBE — Sincronización con Supabase (gratis)
+   Auth por CÓDIGO de email (OTP), sin redirecciones.
+   La tabla 'horasapp_data' guarda 1 fila por usuario con todo el estado.
+   ============================================================ */
+async function cargarSupabase(){
+  const url=state.config.supabaseUrl, key=state.config.supabaseKey;
+  if(!url||!key) throw new Error("Configura la URL y la clave de Supabase");
+  if(window._sb) return window._sb;
+  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+  window._sb = createClient(url, key, { auth:{ persistSession:true, autoRefreshToken:true, storageKey:"horasapp_sb_auth" } });
+  return window._sb;
+}
+async function nubeUsuario(){
+  const sb=await cargarSupabase();
+  const { data } = await sb.auth.getUser();
+  return data?.user||null;
+}
+async function nubeEnviarCodigo(email){
+  if(!email){toast("Escribe tu email","err");return;}
+  try{
+    const sb=await cargarSupabase();
+    const { error } = await sb.auth.signInWithOtp({ email, options:{ shouldCreateUser:true } });
+    if(error) throw error;
+    toast("Código enviado a tu email ✉️","ok");
+  }catch(e){ toast("Error: "+(e.message||e),"err"); }
+}
+async function nubeVerificarCodigo(email, token){
+  if(!email||!token){toast("Email y código","err");return;}
+  try{
+    const sb=await cargarSupabase();
+    const { error } = await sb.auth.verifyOtp({ email, token:token.trim(), type:"email" });
+    if(error) throw error;
+    toast("Conectada a la nube ✓","ok");
+    await refrescarEstadoNube();
+    // Al entrar, ofrecer traer lo que haya en la nube
+    nubeBajar();
+  }catch(e){ toast("Código no válido: "+(e.message||e),"err"); }
+}
+async function nubeSubir(silencioso=false){
+  const sb=await cargarSupabase();
+  const u=await nubeUsuario();
+  if(!u){ if(!silencioso)toast("Primero entra con tu email","err"); return; }
+  const { error } = await sb.from("horasapp_data").upsert({ user_id:u.id, data:state, updated_at:new Date().toISOString() });
+  if(error){ if(!silencioso)toast("Error al subir: "+error.message,"err"); return; }
+  if(!silencioso) toast("Datos subidos a la nube ⬆","ok");
+}
+async function nubeBajar(){
+  const sb=await cargarSupabase();
+  const u=await nubeUsuario();
+  if(!u){ toast("Primero entra con tu email","err"); return; }
+  const { data, error } = await sb.from("horasapp_data").select("data,updated_at").eq("user_id",u.id).maybeSingle();
+  if(error){ toast("Error al bajar: "+error.message,"err"); return; }
+  if(!data||!data.data){ toast("La nube está vacía: sube tus datos primero","err"); return; }
+  confirmar("¿Reemplazar los datos de este dispositivo con los de la nube?",()=>{
+    const cfgLocal=state.config;                  // conservar config local (claves, tema)
+    state=Object.assign(datosEjemplo(),data.data);
+    state.config=Object.assign(configPorDefecto(), data.data.config||{}, {
+      supabaseUrl:cfgLocal.supabaseUrl, supabaseKey:cfgLocal.supabaseKey, syncAuto:cfgLocal.syncAuto
+    });
+    recalcularTodo(); aplicarTema(); toast("Datos de la nube cargados ✓","ok"); render();
+  });
+}
+async function refrescarEstadoNube(){
+  const el=$("#nubeEstado"); if(!el) return;
+  if(!state.config.supabaseUrl||!state.config.supabaseKey){
+    el.className="alert info"; el.innerHTML='<span class="ic">☁️</span><div>Pega tu URL y clave de Supabase para empezar (ver guía NUBE.md).</div>'; return;
+  }
+  try{
+    const u=await nubeUsuario();
+    if(u){ el.className="alert ok"; el.innerHTML=`<span class="ic">✅</span><div>Conectada como <b>${escapeHtml(u.email||'')}</b>. Tus datos se sincronizan.</div>`; }
+    else { el.className="alert warn"; el.innerHTML='<span class="ic">🔑</span><div>Configurada pero sin sesión. Entra con tu email abajo.</div>'; }
+  }catch(e){ el.className="alert danger"; el.innerHTML=`<span class="ic">⚠️</span><div>No se pudo conectar: ${escapeHtml(e.message||String(e))}</div>`; }
+}
+
+/* ============================================================
+   TEMA
+   ============================================================ */
+function aplicarTema(){
+  document.documentElement.setAttribute("data-tema", state.config.tema==="claro"?"claro":"oscuro");
+  $('meta[name=theme-color]').setAttribute("content", state.config.tema==="claro"?"#eef1f7":"#0a0e1a");
+}
+function toggleTema(){ state.config.tema = state.config.tema==="claro"?"oscuro":"claro"; guardar(); aplicarTema(); render(); }
+
+/* ============================================================
+   CONEXIÓN DE EVENTOS (delegación tras cada render)
+   ============================================================ */
+function conectarEventos(){
+  // Onboarding (3 pasos)
+  $$("[data-onb]").forEach(b=>b.onclick=()=>{
+    const t=b.dataset.onb;
+    if(t==="ett") abrirFormEtt(); else if(t==="hotel") abrirFormHotel(); else abrirFormServicio();
+  });
+  // Botones rápidos
+  $$("[data-quick]").forEach(b=>b.onclick=()=>{
+    const q=b.dataset.quick;
+    if(q==="jornada") abrirFormJornada();
+    else if(q==="turno") abrirFormJornada(null,todayISO()); // planear (cambia estado en el form)
+    else if(q==="pago") abrirFormPago();
+  });
+  // Tarjetas jornada -> editar
+  $$("[data-jornada]").forEach(c=>c.onclick=e=>{
+    if(e.target.closest("button"))return;
+    const j=state.jornadas.find(x=>x.id===c.dataset.jornada); if(j)abrirFormJornada(j);
+  });
+  $$("[data-edit]").forEach(b=>b.onclick=e=>{e.stopPropagation();const j=state.jornadas.find(x=>x.id===b.dataset.edit);abrirFormJornada(j);});
+  $$("[data-validar]").forEach(b=>b.onclick=e=>{e.stopPropagation();const j=state.jornadas.find(x=>x.id===b.dataset.validar);j.estadoJornada="Confirmada";guardar();toast("Turno validado ✓","ok");render();});
+  $$("[data-cobrar]").forEach(b=>b.onclick=e=>{e.stopPropagation();const j=state.jornadas.find(x=>x.id===b.dataset.cobrar);j.estadoCobro="Cobrada";guardar();toast("Marcado como cobrado 💶","ok");render();});
+  $$("[data-incidencia]").forEach(b=>b.onclick=e=>{e.stopPropagation();const j=state.jornadas.find(x=>x.id===b.dataset.incidencia);abrirIncidencia(j);});
+
+  // Calendario
+  $$("[data-calvista]").forEach(b=>b.onclick=()=>{calVista=b.dataset.calvista;render();});
+  $$("[data-calnav]").forEach(b=>b.onclick=()=>{const d=+b.dataset.calnav; if(Math.abs(d)>=7){calRef.setDate(calRef.getDate()+d);}else{calRef.setMonth(calRef.getMonth()+d);} render();});
+  $$("[data-dia]").forEach(c=>c.onclick=()=>{calSel=c.dataset.dia; if(calVista!=="dia")render(); else render();});
+  $$("[data-dianav]").forEach(b=>b.onclick=()=>{const d=new Date(calSel+"T00:00:00");d.setDate(d.getDate()+ +b.dataset.dianav);calSel=d.toISOString().slice(0,10);render();});
+  $$("[data-nuevo-en]").forEach(b=>b.onclick=()=>abrirFormJornada(null,b.dataset.nuevoEn));
+
+  // Nómina
+  $$("[data-nomnav]").forEach(b=>b.onclick=()=>{nominaRef.setMonth(nominaRef.getMonth()+ +b.dataset.nomnav);render();});
+  $$("[data-delpago]").forEach(b=>b.onclick=()=>confirmar("¿Eliminar este pago?",()=>{state.pagos=state.pagos.filter(p=>p.id!==b.dataset.delpago);guardar();toast("Pago eliminado");render();}));
+
+  // Historial: filtros
+  const bind=(id,key,re=false)=>{const el=$("#"+id);if(el)el[re?'onchange':'oninput']=()=>{filtros[key]=el.value;render();if(re||id==='histQ')document.getElementById(id)?.focus();};};
+  if($("#histQ")) $("#histQ").oninput=()=>{filtros.q=$("#histQ").value; const pos=$("#histQ").selectionStart; render(); const e=$("#histQ"); if(e){e.focus();e.setSelectionRange(pos,pos);}};
+  ["fDesde:desde","fHasta:hasta"].forEach(p=>{const[id,k]=p.split(":");if($("#"+id))$("#"+id).onchange=()=>{filtros[k]=$("#"+id).value;render();};});
+  if($("#fEtt"))$("#fEtt").onchange=()=>{filtros.ett=$("#fEtt").value;render();};
+  if($("#fHotel"))$("#fHotel").onchange=()=>{filtros.hotel=$("#fHotel").value;render();};
+  if($("#fServicio"))$("#fServicio").onchange=()=>{filtros.servicio=$("#fServicio").value;render();};
+  if($("#fEstadoJ"))$("#fEstadoJ").onchange=()=>{filtros.estadoJornada=$("#fEstadoJ").value;render();};
+  if($("#fEstadoC"))$("#fEstadoC").onchange=()=>{filtros.estadoCobro=$("#fEstadoC").value;render();};
+  if($("#limpiarFiltros"))$("#limpiarFiltros").onclick=()=>{filtros={q:"",ett:"",hotel:"",servicio:"",estadoJornada:"",estadoCobro:"",desde:"",hasta:""};render();};
+
+  // Export
+  $$("[data-export]").forEach(b=>b.onclick=()=>{const t=b.dataset.export;if(t==="json")exportarJSON();else if(t==="csv")exportarCSV();else exportarPDF();});
+
+  // Ajustes: catálogos
+  if($("[data-newett]"))$("[data-newett]").onclick=()=>abrirFormEtt();
+  if($("[data-newhotel]"))$("[data-newhotel]").onclick=()=>abrirFormHotel();
+  if($("[data-newservicio]"))$("[data-newservicio]").onclick=()=>abrirFormServicio();
+  $$("[data-editett]").forEach(b=>b.onclick=()=>abrirFormEtt(getEtt(b.dataset.editett)));
+  $$("[data-edithotel]").forEach(b=>b.onclick=()=>abrirFormHotel(getHotel(b.dataset.edithotel)));
+  $$("[data-editservicio]").forEach(b=>b.onclick=()=>abrirFormServicio(getServicio(b.dataset.editservicio)));
+
+  // Config salarial / app
+  $$(".cfg").forEach(el=>el.onchange=()=>{
+    const k=el.dataset.cfg;
+    state.config[k]= (el.type==="number")?num(el.value):el.value;
+    recalcularTodo();
+    if(k==="supabaseUrl"||k==="supabaseKey"){ window._sb=null; refrescarEstadoNube(); } // recrear cliente
+    if(k==="moneda"||k==="redondeoMin")render();
+  });
+  if($("#swTema"))$("#swTema").onchange=toggleTema;
+
+  // Nube (Supabase)
+  if($("#nubeEstado")) refrescarEstadoNube();
+  if($("#nubeEnviar"))$("#nubeEnviar").onclick=()=>nubeEnviarCodigo($("#nubeEmail").value.trim());
+  if($("#nubeVerificar"))$("#nubeVerificar").onclick=()=>nubeVerificarCodigo($("#nubeEmail").value.trim(),$("#nubeCodigo").value);
+  if($("#nubeSubir"))$("#nubeSubir").onclick=()=>nubeSubir().catch(e=>toast("Error: "+(e.message||e),"err"));
+  if($("#nubeBajar"))$("#nubeBajar").onclick=()=>nubeBajar().catch(e=>toast("Error: "+(e.message||e),"err"));
+  if($("#nubeAuto"))$("#nubeAuto").onchange=()=>{ state.config.syncAuto=$("#nubeAuto").checked; guardar(); toast(state.config.syncAuto?"Sincronización automática activada":"Sincronización automática desactivada"); };
+  if($("[data-onedrive]"))$("[data-onedrive]").onclick=()=>{ exportarJSON(); toast("Guarda el archivo en tu carpeta de OneDrive/Drive","ok"); };
+  if($("[data-backup]"))$("[data-backup]").onclick=exportarJSON;
+  if($("[data-restore]"))$("[data-restore]").onclick=()=>$("#fileRestore").click();
+  if($("#fileRestore"))$("#fileRestore").onchange=e=>{if(e.target.files[0])importarArchivo(e.target.files[0]);};
+  if($("[data-wipe]"))$("[data-wipe]").onclick=()=>confirmar("¿Borrar TODOS los datos? Esto no se puede deshacer. Haz una copia de seguridad antes.",()=>{
+    DB.wipe();state=datosEjemplo();DB.save(state);aplicarTema();toast("Datos borrados");navegar("inicio");});
+
+  // Color pickers (en modales)
+  $$('[id^="eColor"] button,[id^="hColor"] button,[id^="sColor"] button,[id$="Color"] button').forEach(b=>{
+    b.onclick=()=>{const cont=b.parentElement;cont.dataset.sel=b.dataset.c;
+      $$("button",cont).forEach(x=>x.style.border="3px solid transparent");b.style.border="3px solid #fff";};
+  });
+}
+// Sobrescribe colorSel para leer del contenedor
+function colorSel(id){ const c=$("#"+id); return c?.dataset.sel || c?.querySelector('button[style*="#fff"]')?.dataset.c || COLORES[0]; }
+
+/* Botón tema en topbar */
+$("#btnTema").onclick=toggleTema;
+
+/* ============================================================
+   PWA: registro de Service Worker
+   ============================================================ */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("sw.js").catch(()=>{/* offline opcional */});
+  });
+}
+
+/* ============================================================
+   ARRANQUE
+   ============================================================ */
+aplicarTema();
+render();
+if(primeraVez) setTimeout(()=>toast("¡Bienvenida! Empieza creando tu ETT en los 3 pasos.","ok"),600);
+</script>
+</body>
+</html>
