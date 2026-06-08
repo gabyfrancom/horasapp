@@ -1,7 +1,7 @@
 /* HorasApp Pro — Service Worker (offline-first)
    Cachea el shell de la app para que funcione sin conexión.
    Sube el número de versión del caché cuando cambies archivos. */
-const CACHE = "horasapp-pro-v2";
+const CACHE = "horasapp-pro-v3";
 const ASSETS = [
   "./",
   "./index.html",

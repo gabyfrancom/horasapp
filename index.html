@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no" />
+<!-- Endurecimiento: limita de dónde se carga código y a dónde se pueden enviar datos -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://esm.sh; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://esm.sh https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" />
 <meta name="theme-color" content="#0a0e1a" />
 <meta name="description" content="HorasApp Pro — control de horas trabajadas, ETT, hoteles, servicios y cobros." />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -941,6 +943,21 @@ function vistaNomina(){
     <div class="tline"><span><b>Neto estimado</b></span><b style="color:var(--accent)">${money(neto)}</b></div>
   </div>`;
 
+  // Liquidación por ETT con sus complementos/descuentos propios
+  html+=`<div class="section-title">Liquidación por ETT (conceptos propios)</div>`;
+  const ettsMes=[...new Set(conf.map(j=>j.ettId))].filter(Boolean);
+  if(!ettsMes.length) html+=`<div class="card"><div class="muted small">Sin jornadas confirmadas este mes.</div></div>`;
+  else html+=ettsMes.map(id=>{
+    const e=getEtt(id); const L=liquidacionEtt(id,ref);
+    return `<details class="acc"><summary><span><span class="pill-color" style="background:${e?.color||'#5b8cff'}"></span> ${escapeHtml(e?.nombre||'—')}</span> <b>${money(L.neto)}</b></summary><div class="acc-body">
+      <div class="tline"><span>Bruto del mes</span><b>${money(L.bruto)}</b></div>
+      ${L.comp.map(c=>`<div class="tline"><span>+ ${escapeHtml(c.nombre)}${c.tipo==='pct'?` (${c.valor}%)`:''}</span><b style="color:var(--accent)">+${money(c.importe)}</b></div>`).join('')}
+      ${L.desc.map(c=>`<div class="tline"><span>− ${escapeHtml(c.nombre)}${c.tipo==='pct'?` (${c.valor}%)`:''}</span><b style="color:var(--danger)">−${money(c.importe)}</b></div>`).join('')}
+      <div class="tline"><span><b>Neto liquidación</b></span><b style="color:var(--accent)">${money(L.neto)}</b></div>
+      ${L.tiene?'':'<div class="hint">Sin complementos/descuentos propios todavía. Añádelos en Ajustes → 🏢 ETT → ✏️.</div>'}
+    </div></details>`;
+  }).join('');
+
   // Resumen por ETT / hotel / servicio
   html+=`<div class="section-title">Por ETT</div>`+resumenAgrupado(conf,j=>j.ettId,id=>getEtt(id)?.nombre,id=>getEtt(id)?.color,ref);
   html+=`<div class="section-title">Por hotel</div>`+resumenAgrupado(conf,j=>j.hotelId,id=>getHotel(id)?.nombre,id=>getHotel(id)?.color);
@@ -957,6 +974,18 @@ function vistaNomina(){
     : `<div class="card"><div class="muted small">Sin pagos registrados este mes.</div></div>`;
   html+=`<button class="btn accent" style="margin-top:8px" data-quick="pago">💶 Registrar pago recibido</button>`;
   return html;
+}
+// Liquidación mensual de una ETT aplicando SUS complementos y descuentos propios.
+function liquidacionEtt(ettId, ref){
+  const e=getEtt(ettId); if(!e) return null;
+  const mes=state.jornadas.filter(j=>j.ettId===ettId && mismoMes(j.fecha,ref) && esConfirmada(j));
+  const bruto=sumar(mes,"brutoEstimado");
+  const calc=c=>({ ...c, importe: c.tipo==="pct" ? +(bruto*num(c.valor)/100).toFixed(2) : num(c.valor) });
+  const comp=(e.complementos||[]).map(calc);
+  const desc=(e.descuentos||[]).map(calc);
+  const sumComp=comp.reduce((a,x)=>a+x.importe,0);
+  const sumDesc=desc.reduce((a,x)=>a+x.importe,0);
+  return { bruto, comp, desc, sumComp, sumDesc, neto:+(bruto+sumComp-sumDesc).toFixed(2), tiene:(comp.length+desc.length)>0 };
 }
 function resumenAgrupado(jornadas,keyFn,nameFn,colorFn,ref){
   const g={};
@@ -1079,12 +1108,15 @@ function vistaAjustes(){
     <div class="field"><label>Supabase anon key</label><input class="input cfg" data-cfg="supabaseKey" value="${escapeHtml(c.supabaseKey||'')}" placeholder="eyJhbGciOiJI..."></div>
     <div id="nubeEstado" class="alert info" style="margin:8px 0"><span class="ic">☁️</span><div>Comprobando estado…</div></div>
     <div class="field"><label>Tu email</label><input class="input" id="nubeEmail" type="email" placeholder="tucorreo@ejemplo.com"></div>
-    <div class="btn-row"><button class="btn sm" id="nubeEnviar">✉️ Enviar código</button></div>
-    <div class="btn-row" style="margin-top:8px"><input class="input" id="nubeCodigo" placeholder="código del email" style="flex:1"><button class="btn sm primary" id="nubeVerificar" style="flex:0 0 auto">Entrar</button></div>
+    <div class="field"><label>Contraseña</label><input class="input" id="nubePass" type="password" placeholder="elige una (mín. 6 caracteres)"></div>
+    <div class="btn-row"><button class="btn sm primary" id="nubeEntrar">Entrar / Crear cuenta</button></div>
+    <div class="hint">La primera vez crea tu cuenta sola. Usa el mismo email y contraseña en el móvil y el PC.</div>
     <div class="divider"></div>
     <div class="btn-row"><button class="btn sm primary" id="nubeSubir">⬆ Subir a la nube</button><button class="btn sm" id="nubeBajar">⬇ Bajar de la nube</button></div>
     <div class="list-item" style="justify-content:space-between;margin-top:8px"><div class="body"><div class="title">Sincronizar al guardar</div><div class="sub">Sube solo tras cada cambio</div></div>
       <label class="switch"><input type="checkbox" id="nubeAuto" ${c.syncAuto?'checked':''}><span class="sl"></span></label></div>
+    <button class="btn sm danger" style="margin-top:10px" id="nubeSalir">🔒 Cerrar sesión en este dispositivo</button>
+    <div class="hint">Útil si usas un equipo compartido o prestado.</div>
   </div></details>
 
   <details class="acc"><summary>⚙️ Ajustes de la app <span class="arrow">▾</span></summary><div class="acc-body">
@@ -1283,8 +1315,17 @@ function abrirFormPago(){
 }
 
 /* ---- Formularios de catálogos (ETT/Hotel/Servicio) ---- */
+// Fila editable de un concepto (complemento o descuento) de una ETT
+function filaConcepto(c={}){
+  return `<div class="row concepto-fila" style="gap:6px;margin-bottom:6px">
+    <input class="input cn-nombre" placeholder="Concepto" value="${escapeHtml(c.nombre||'')}" style="flex:2">
+    <input type="number" step="0.01" class="input cn-valor" placeholder="0" value="${c.valor??''}" style="flex:1">
+    <select class="input cn-tipo" style="flex:0 0 64px"><option value="eur" ${c.tipo!=='pct'?'selected':''}>€</option><option value="pct" ${c.tipo==='pct'?'selected':''}>%</option></select>
+    <button type="button" class="btn ghost sm cn-del" style="flex:0 0 auto">🗑</button>
+  </div>`;
+}
 function abrirFormEtt(ett=null){
-  const e=ett||{nombre:"",color:COLORES[state.etts.length%COLORES.length],contacto:"",email:"",telefono:"",cif:"",activa:true,observaciones:""};
+  const e=ett||{nombre:"",color:COLORES[state.etts.length%COLORES.length],contacto:"",email:"",telefono:"",cif:"",activa:true,observaciones:"",complementos:[],descuentos:[]};
   abrirModal(ett?"Editar ETT":"Nueva ETT",`
     <div class="field"><label>Nombre *</label><input class="input" id="eNombre" value="${escapeHtml(e.nombre)}"></div>
     <div class="field"><label>Color</label>${colorPicker("eColor",e.color)}</div>
@@ -1297,16 +1338,34 @@ function abrirFormEtt(ett=null){
       <div class="field"><label>CIF/NIF</label><input class="input" id="eCif" value="${escapeHtml(e.cif||'')}"></div>
     </div>
     <div class="field"><label>Observaciones</label><textarea class="input" id="eObs">${escapeHtml(e.observaciones||'')}</textarea></div>
+    <details class="acc"><summary>💶 Complementos y descuentos de esta ETT <span class="arrow">▾</span></summary><div class="acc-body">
+      <div class="hint">Conceptos propios de esta ETT para afinar la liquidación mensual. Importe fijo (€/mes) o porcentaje (% del bruto del mes en esta ETT).</div>
+      <div style="font-weight:800;margin:10px 0 6px;color:var(--accent)">Complementos (suman)</div>
+      <div id="ettComplementos">${(e.complementos||[]).map(filaConcepto).join('')}</div>
+      <button type="button" class="btn ghost sm" id="addComplemento">＋ Añadir complemento</button>
+      <div style="font-weight:800;margin:14px 0 6px;color:var(--danger)">Descuentos (restan)</div>
+      <div id="ettDescuentos">${(e.descuentos||[]).map(filaConcepto).join('')}</div>
+      <button type="button" class="btn ghost sm" id="addDescuento">＋ Añadir descuento</button>
+    </div></details>
     <div class="list-item" style="justify-content:space-between"><div class="body"><div class="title">Activa</div></div>
       <label class="switch"><input type="checkbox" id="eActiva" ${e.activa?'checked':''}><span class="sl"></span></label></div>
     <div class="btn-row" style="margin-top:8px">
       ${ett?`<button class="btn danger" id="eBorrar">🗑 Eliminar</button>`:''}
       <button class="btn primary" id="eGuardar">Guardar</button></div>`);
+  // Añadir/borrar filas de conceptos
+  $("#addComplemento").onclick=()=>$("#ettComplementos").insertAdjacentHTML("beforeend",filaConcepto());
+  $("#addDescuento").onclick=()=>$("#ettDescuentos").insertAdjacentHTML("beforeend",filaConcepto());
+  $("#modal-root").addEventListener("click",e=>{ if(e.target.classList&&e.target.classList.contains("cn-del")) e.target.closest(".concepto-fila")?.remove(); });
+  const leerConceptos=sel=>[...$(sel).querySelectorAll(".concepto-fila")].map(f=>({
+    nombre:$(".cn-nombre",f).value.trim(), valor:num($(".cn-valor",f).value), tipo:$(".cn-tipo",f).value
+  })).filter(c=>c.nombre);
+
   $("#eGuardar").onclick=()=>{
     const nombre=$("#eNombre").value.trim();
     if(!nombre){toast("Falta el nombre","err");return;}
     const obj={nombre,color:colorSel("eColor"),contacto:$("#eContacto").value,telefono:$("#eTel").value,
-      email:$("#eEmail").value,cif:$("#eCif").value,observaciones:$("#eObs").value,activa:$("#eActiva").checked};
+      email:$("#eEmail").value,cif:$("#eCif").value,observaciones:$("#eObs").value,activa:$("#eActiva").checked,
+      complementos:leerConceptos("#ettComplementos"), descuentos:leerConceptos("#ettDescuentos")};
     if(ett)Object.assign(ett,obj); else state.etts.push(Object.assign({id:uid()},obj));
     guardar();cerrarModal();toast("ETT guardada ✓","ok");render();
   };
@@ -1542,7 +1601,7 @@ async function cargarSupabase(){
   const url=state.config.supabaseUrl, key=state.config.supabaseKey;
   if(!url||!key) throw new Error("Configura la URL y la clave de Supabase");
   if(window._sb) return window._sb;
-  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.45.4");
   window._sb = createClient(url, key, { auth:{ persistSession:true, autoRefreshToken:true, storageKey:"horasapp_sb_auth" } });
   return window._sb;
 }
@@ -1551,26 +1610,26 @@ async function nubeUsuario(){
   const { data } = await sb.auth.getUser();
   return data?.user||null;
 }
-async function nubeEnviarCodigo(email){
-  if(!email){toast("Escribe tu email","err");return;}
+// Entrar con email + contraseña. Si la cuenta no existe, la crea automáticamente.
+async function nubeEntrar(email, password){
+  if(!email||!password){toast("Escribe email y contraseña","err");return;}
+  if(password.length<6){toast("La contraseña debe tener al menos 6 caracteres","err");return;}
   try{
     const sb=await cargarSupabase();
-    const { error } = await sb.auth.signInWithOtp({ email, options:{ shouldCreateUser:true } });
-    if(error) throw error;
-    toast("Código enviado a tu email ✉️","ok");
-  }catch(e){ toast("Error: "+(e.message||e),"err"); }
-}
-async function nubeVerificarCodigo(email, token){
-  if(!email||!token){toast("Email y código","err");return;}
-  try{
-    const sb=await cargarSupabase();
-    const { error } = await sb.auth.verifyOtp({ email, token:token.trim(), type:"email" });
-    if(error) throw error;
+    let { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if(error){
+      // No existe o credenciales: intentamos crear la cuenta
+      const r = await sb.auth.signUp({ email, password });
+      if(r.error) throw r.error;
+      if(!r.data.session){
+        toast("Cuenta creada. Confirma el email que te llegó y vuelve a pulsar Entrar.","ok");
+        await refrescarEstadoNube(); return;
+      }
+    }
     toast("Conectada a la nube ✓","ok");
     await refrescarEstadoNube();
-    // Al entrar, ofrecer traer lo que haya en la nube
-    nubeBajar();
-  }catch(e){ toast("Código no válido: "+(e.message||e),"err"); }
+    nubeBajar();   // ofrece traer lo que haya en la nube
+  }catch(e){ toast("Error: "+(e.message||e),"err"); }
 }
 async function nubeSubir(silencioso=false){
   const sb=await cargarSupabase();
@@ -1595,6 +1654,14 @@ async function nubeBajar(){
     });
     recalcularTodo(); aplicarTema(); toast("Datos de la nube cargados ✓","ok"); render();
   });
+}
+async function nubeCerrarSesion(){
+  try{
+    const sb=await cargarSupabase();
+    await sb.auth.signOut();
+    toast("Sesión cerrada en este dispositivo","ok");
+    await refrescarEstadoNube();
+  }catch(e){ toast("Error: "+(e.message||e),"err"); }
 }
 async function refrescarEstadoNube(){
   const el=$("#nubeEstado"); if(!el) return;
@@ -1688,11 +1755,11 @@ function conectarEventos(){
 
   // Nube (Supabase)
   if($("#nubeEstado")) refrescarEstadoNube();
-  if($("#nubeEnviar"))$("#nubeEnviar").onclick=()=>nubeEnviarCodigo($("#nubeEmail").value.trim());
-  if($("#nubeVerificar"))$("#nubeVerificar").onclick=()=>nubeVerificarCodigo($("#nubeEmail").value.trim(),$("#nubeCodigo").value);
+  if($("#nubeEntrar"))$("#nubeEntrar").onclick=()=>nubeEntrar($("#nubeEmail").value.trim(),$("#nubePass").value);
   if($("#nubeSubir"))$("#nubeSubir").onclick=()=>nubeSubir().catch(e=>toast("Error: "+(e.message||e),"err"));
   if($("#nubeBajar"))$("#nubeBajar").onclick=()=>nubeBajar().catch(e=>toast("Error: "+(e.message||e),"err"));
   if($("#nubeAuto"))$("#nubeAuto").onchange=()=>{ state.config.syncAuto=$("#nubeAuto").checked; guardar(); toast(state.config.syncAuto?"Sincronización automática activada":"Sincronización automática desactivada"); };
+  if($("#nubeSalir"))$("#nubeSalir").onclick=()=>nubeCerrarSesion().catch(e=>toast("Error: "+(e.message||e),"err"));
   if($("[data-onedrive]"))$("[data-onedrive]").onclick=()=>{ exportarJSON(); toast("Guarda el archivo en tu carpeta de OneDrive/Drive","ok"); };
   if($("[data-backup]"))$("[data-backup]").onclick=exportarJSON;
   if($("[data-restore]"))$("[data-restore]").onclick=()=>$("#fileRestore").click();
