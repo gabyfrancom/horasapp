@@ -248,7 +248,7 @@ select.input{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg 
 <div id="app">
   <header class="topbar">
     <div class="brandmark">
-      <div class="logo">H</div>
+      <img class="logo" src="icons/icon-192.png" alt="HorasApp Pro" style="object-fit:cover" />
       <div>
         <h1>HorasApp <span style="color:var(--brand2)">Pro</span></h1>
         <div class="sub" id="topSub">Tu tablero de control laboral</div>
@@ -398,8 +398,10 @@ function configPorDefecto(){
     irpf:2, contingenciasComunes:4.7, desempleo:1.55, formacion:0.1, mei:0.13,
     prorrata:0, complementos:0,
     redondeoMin:0, moneda:"€", formatoFecha:"dd/mm/aaaa", tema:"oscuro",
-    // Nube (Supabase). La anon key es pública por diseño; la seguridad la da RLS.
-    supabaseUrl:"", supabaseKey:"", syncAuto:false,
+    // Nube (Supabase) precargada. La clave publicable es pública por diseño; la seguridad la da RLS.
+    supabaseUrl:"https://mjjvmyeolhkwomaeqczt.supabase.co",
+    supabaseKey:"sb_publishable_4f1xjTDDGEfHJSqwaRaoMQ_zN5Tss89",
+    syncAuto:true,
   };
 }
 /* Crea una jornada con cálculos resueltos */
@@ -554,6 +556,10 @@ if(!state){ state = datosEjemplo(); primeraVez=true; DB.save(state); }
 // Migración suave: garantizar campos nuevos
 state.config = Object.assign(configPorDefecto(), state.config||{});
 state.pagos = state.pagos||[];
+// Si las claves de nube quedaron vacías (borradas), recuperarlas de las precargadas
+{ const _def=configPorDefecto();
+  if(!state.config.supabaseUrl) state.config.supabaseUrl=_def.supabaseUrl;
+  if(!state.config.supabaseKey) state.config.supabaseKey=_def.supabaseKey; }
 
 let rutaActual = "inicio";
 let calRef = new Date();        // mes mostrado en calendario
@@ -566,6 +572,17 @@ function guardar(){ DB.save(state); if(state.config.syncAuto) programarSync(); }
 function recalcularTodo(){ state.jornadas.forEach(recalcular); guardar(); }
 let _syncT=null;
 function programarSync(){ clearTimeout(_syncT); _syncT=setTimeout(()=>{ nubeSubir(true).catch(()=>{}); }, 1500); }
+// Turnos planeados cuya fecha ya pasó → pasan a "Confirmada" (salvo que tú los hayas cambiado a otro estado)
+function autoConfirmarPlaneadas(){
+  const hoy=todayISO(); let n=0;
+  state.jornadas.forEach(j=>{
+    if(j.estadoJornada==="Planeada" && j.fecha < hoy){
+      j.estadoJornada="Confirmada"; j.autoConfirmada=true; j.updatedAt=new Date().toISOString(); n++;
+    }
+  });
+  if(n) guardar();
+  return n;
+}
 
 /* ---------- Toast ---------- */
 function toast(msg,tipo=""){
@@ -1103,10 +1120,13 @@ function vistaAjustes(){
   </div></details>
 
   <details class="acc"><summary>☁️ Sincronización en la nube <span class="arrow">▾</span></summary><div class="acc-body">
-    <div class="hint">Sincroniza móvil y PC con Supabase (gratis). La primera vez, sigue la guía <b>NUBE.md</b> para pegar tu URL y clave aquí.</div>
-    <div class="field"><label>Supabase URL</label><input class="input cfg" data-cfg="supabaseUrl" value="${escapeHtml(c.supabaseUrl||'')}" placeholder="https://xxxxx.supabase.co"></div>
-    <div class="field"><label>Supabase anon key</label><input class="input cfg" data-cfg="supabaseKey" value="${escapeHtml(c.supabaseKey||'')}" placeholder="eyJhbGciOiJI..."></div>
+    <div class="hint">Sincroniza móvil y PC. Conexión ya configurada: solo entra con tu email y contraseña.</div>
     <div id="nubeEstado" class="alert info" style="margin:8px 0"><span class="ic">☁️</span><div>Comprobando estado…</div></div>
+    <details class="acc" style="margin-bottom:10px"><summary>🔧 Conexión (ya configurada) <span class="arrow">▾</span></summary><div class="acc-body">
+      <div class="field"><label>Supabase URL</label><input class="input cfg" data-cfg="supabaseUrl" value="${escapeHtml(c.supabaseUrl||'')}" placeholder="https://xxxxx.supabase.co"></div>
+      <div class="field"><label>Supabase anon key</label><input class="input cfg" data-cfg="supabaseKey" value="${escapeHtml(c.supabaseKey||'')}" placeholder="sb_publishable_..."></div>
+      <div class="hint">Solo cámbialas si usas otra nube. Por defecto ya están puestas.</div>
+    </div></details>
     <div class="field"><label>Tu email</label><input class="input" id="nubeEmail" type="email" placeholder="tucorreo@ejemplo.com"></div>
     <div class="field"><label>Contraseña</label><input class="input" id="nubePass" type="password" placeholder="elige una (mín. 6 caracteres)"></div>
     <div class="btn-row"><button class="btn sm primary" id="nubeEntrar">Entrar / Crear cuenta</button></div>
@@ -1145,8 +1165,14 @@ function vistaAjustes(){
 function abrirModal(titulo,contenidoHTML){
   const root=$("#modal-root");
   root.innerHTML=`<div class="modal-bg" id="mbg"><div class="modal">
-    <div class="grip"></div><h2>${titulo}</h2>${contenidoHTML}</div></div>`;
+    <div class="grip"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <button class="icon-btn" id="modalVolver" title="Volver" style="width:36px;height:36px">‹</button>
+      <h2 style="margin:0">${titulo}</h2>
+    </div>
+    ${contenidoHTML}</div></div>`;
   $("#mbg").onclick=e=>{ if(e.target.id==="mbg") cerrarModal(); };
+  $("#modalVolver").onclick=cerrarModal;
 }
 function cerrarModal(){ $("#modal-root").innerHTML=""; }
 
@@ -1663,6 +1689,39 @@ async function nubeCerrarSesion(){
     await refrescarEstadoNube();
   }catch(e){ toast("Error: "+(e.message||e),"err"); }
 }
+// Sincronización automática al abrir: si la nube es más nueva, la trae; si lo local es más nuevo, lo sube.
+async function sincronizarInicio(origSaved){
+  try{
+    clearTimeout(_syncT);   // cancela subidas pendientes para no pisar la nube con datos viejos
+    if(!state.config.supabaseUrl||!state.config.supabaseKey) return;
+    const sb=await cargarSupabase();
+    const u=await nubeUsuario();
+    if(!u) return; // sin sesión: se conectará al iniciar sesión
+    const meta=await sb.from("horasapp_data").select("updated_at").eq("user_id",u.id).maybeSingle();
+    const cloudT=meta.data?.updated_at ? Date.parse(meta.data.updated_at) : 0;
+    const localT=origSaved ? Date.parse(origSaved) : 0;   // hora REAL del último guardado local (antes del auto-confirmar)
+    if(cloudT > localT + 1000){
+      // La nube es más nueva: traerla, aplicar auto-confirmar sobre datos frescos y devolver el resultado a la nube
+      const full=await sb.from("horasapp_data").select("data").eq("user_id",u.id).maybeSingle();
+      const d=full.data?.data;
+      if(d){
+        const cfg=state.config;
+        state.etts=d.etts||[]; state.hoteles=d.hoteles||[]; state.servicios=d.servicios||[];
+        state.jornadas=d.jornadas||[]; state.pagos=d.pagos||[];
+        state.config=Object.assign(configPorDefecto(), d.config||{}, {supabaseUrl:cfg.supabaseUrl,supabaseKey:cfg.supabaseKey,syncAuto:cfg.syncAuto});
+        state.jornadas.forEach(recalcular);
+        autoConfirmarPlaneadas();
+        DB.save(state);
+        await nubeSubir(true);
+        aplicarTema(); render();
+        toast("Datos al día desde la nube ☁️","ok");
+        return;
+      }
+    }
+    // Lo local es lo más nuevo: subir (incluye el auto-confirmar de arranque)
+    await nubeSubir(true);
+  }catch(e){ /* silencioso: sin conexión, etc. */ }
+}
 async function refrescarEstadoNube(){
   const el=$("#nubeEstado"); if(!el) return;
   if(!state.config.supabaseUrl||!state.config.supabaseKey){
@@ -1791,8 +1850,12 @@ if("serviceWorker" in navigator){
 /* ============================================================
    ARRANQUE
    ============================================================ */
+const _origSaved=state.meta?.savedAt;   // hora real del último guardado, antes de tocar nada
+const _ac=autoConfirmarPlaneadas();     // confirma turnos planeados ya pasados (local)
 aplicarTema();
 render();
+if(_ac) setTimeout(()=>toast(`${_ac} turno(s) planeado(s) ya pasado(s) → confirmado(s)`,"ok"),1000);
+setTimeout(()=>sincronizarInicio(_origSaved), 800);  // trae/sube lo más reciente al abrir
 if(primeraVez) setTimeout(()=>toast("¡Bienvenida! Empieza creando tu ETT en los 3 pasos.","ok"),600);
 </script>
 </body>
