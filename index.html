@@ -254,9 +254,12 @@ select.input{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg 
         <div class="sub" id="topSub">Tu tablero de control laboral</div>
       </div>
     </div>
-    <button class="icon-btn" id="btnTema" title="Tema">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1111.2 3 7 7 0 0021 12.8z"/></svg>
-    </button>
+    <div style="display:flex;gap:8px">
+      <button class="icon-btn" id="btnPrivacidad" title="Ocultar / mostrar importes"></button>
+      <button class="icon-btn" id="btnTema" title="Tema">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1111.2 3 7 7 0 0021 12.8z"/></svg>
+      </button>
+    </div>
   </header>
   <main id="view"></main>
 </div>
@@ -299,6 +302,7 @@ const num = v => { const n = parseFloat(String(v).replace(",",".")); return isNa
 
 function money(n){
   const c = state?.config?.moneda || "€";
+  if(state?.config?.ocultarMontos) return `••••• ${c}`;   // modo privacidad
   const v = (Math.round((n||0)*100)/100).toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2});
   return `${v} ${c}`;
 }
@@ -402,6 +406,7 @@ function configPorDefecto(){
     supabaseUrl:"https://mjjvmyeolhkwomaeqczt.supabase.co",
     supabaseKey:"sb_publishable_4f1xjTDDGEfHJSqwaRaoMQ_zN5Tss89",
     syncAuto:true,
+    ocultarMontos:false,
   };
 }
 /* Crea una jornada con cálculos resueltos */
@@ -1837,6 +1842,23 @@ function colorSel(id){ const c=$("#"+id); return c?.dataset.sel || c?.querySelec
 
 /* Botón tema en topbar */
 $("#btnTema").onclick=toggleTema;
+
+/* Modo privacidad: oculta los importes con ••••• (como las apps de banco) */
+function actualizarBotonPrivacidad(){
+  const b=$("#btnPrivacidad"); if(!b) return;
+  const oculto=state.config.ocultarMontos;
+  b.innerHTML = oculto
+    ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 002.8 2.8"/><path d="M9.4 4.3A9.8 9.8 0 0112 4c7 0 11 8 11 8a18 18 0 01-2.2 3.2M6.3 6.3A18 18 0 001 12s4 8 11 8a9.7 9.7 0 004.2-.9"/></svg>'
+    : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  b.style.color = oculto ? 'var(--accent)' : 'var(--txt)';
+}
+function togglePrivacidad(){
+  state.config.ocultarMontos=!state.config.ocultarMontos;
+  guardar(); actualizarBotonPrivacidad(); render();
+  toast(state.config.ocultarMontos?'Importes ocultos 🙈':'Importes visibles 👀');
+}
+$("#btnPrivacidad").onclick=togglePrivacidad;
+actualizarBotonPrivacidad();
 
 /* ============================================================
    PWA: registro de Service Worker
