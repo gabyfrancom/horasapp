@@ -211,6 +211,19 @@ select.input{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg 
 
 /* Modal */
 .modal-bg{position:fixed;inset:0;z-index:100;background:rgba(2,5,12,.66);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center;animation:fade .2s;}
+/* Seguridad: desbloqueo huella/PIN */
+.hide{display:none!important;}
+.bio-btn{width:84px;height:84px;border-radius:50%;background:rgba(91,140,255,.14);border:2px solid var(--brand);display:inline-flex;align-items:center;justify-content:center;animation:bioPulse 1.8s infinite;cursor:pointer;}
+@keyframes bioPulse{0%,100%{box-shadow:0 0 0 0 rgba(91,140,255,.40);}50%{box-shadow:0 0 0 12px rgba(91,140,255,0);}}
+.pin-dots{display:flex;gap:16px;justify-content:center;margin:6px 0 18px;}
+.pin-dots i{width:14px;height:14px;border-radius:50%;background:var(--surface2);border:1px solid var(--line2);transition:.12s;}
+.pin-dots i.on{background:var(--brand);border-color:var(--brand);}
+.pin-dots.shake{animation:pinShake .36s;}
+@keyframes pinShake{0%,100%{transform:none}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:300px;margin:0 auto;}
+.pin-pad button{background:var(--surface2);border:1px solid var(--line);color:var(--txt);font-size:20px;font-weight:700;padding:14px;border-radius:14px;}
+.pin-pad button:active{background:var(--brand);color:#fff;}
+.pin-pad button.ghost{background:none;border:none;font-size:18px;}
 .modal{background:var(--surface);border:1px solid var(--line2);border-radius:22px 22px 0 0;width:100%;max-width:540px;max-height:92vh;overflow-y:auto;padding:8px 16px calc(24px + var(--safe-bot));animation:up .26s cubic-bezier(.2,.9,.3,1);}
 @keyframes up{from{transform:translateY(100%)}to{transform:none}}
 .modal .grip{width:42px;height:5px;background:var(--line2);border-radius:3px;margin:8px auto 12px;}
@@ -279,7 +292,7 @@ select.input{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg 
 
 /* ---------- Constantes y catálogos ---------- */
 const STORAGE_KEY = "horasapp_pro_v1";       // clave estable: no cambiar entre versiones
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.1.0";
 
 const ESTADOS_JORNADA = [
   "Planeada","Confirmada","Pendiente de validar","Enviada a ETT",
@@ -407,6 +420,7 @@ function configPorDefecto(){
     supabaseKey:"sb_publishable_4f1xjTDDGEfHJSqwaRaoMQ_zN5Tss89",
     syncAuto:true,
     ocultarMontos:false,
+    protegerImportes:false, pinHash:null, pinSalt:null, bioCredId:null,
   };
 }
 /* Crea una jornada con cálculos resueltos */
@@ -1144,6 +1158,19 @@ function vistaAjustes(){
     <div class="hint">Útil si usas un equipo compartido o prestado.</div>
   </div></details>
 
+  <details class="acc"><summary>🔒 Seguridad de importes <span class="arrow">▾</span></summary><div class="acc-body">
+    <div class="hint">Protege el ojo: al <b>revelar</b> importes te pedirá huella o PIN. Ocultarlos siempre es libre.</div>
+    <div class="list-item" style="justify-content:space-between;margin-top:10px">
+      <div class="body"><div class="title">PIN de 4 dígitos</div><div class="sub">${c.pinHash?'Configurado ✓':'Sin configurar'}</div></div>
+      <button class="btn sm" id="segPin">${c.pinHash?'Cambiar':'Crear'}</button>
+    </div>
+    <div class="list-item" style="justify-content:space-between;margin-top:8px">
+      <div class="body"><div class="title">Huella / biometría</div><div class="sub">${c.bioCredId?'Activada ✓':'Usa el sensor de tu móvil'}</div></div>
+      <button class="btn sm ${c.bioCredId?'danger':'primary'}" id="segBio">${c.bioCredId?'Quitar':'Activar'}</button>
+    </div>
+    <div class="hint" style="margin-top:8px">La huella usa el lector de tu dispositivo (WebAuthn, requiere HTTPS). Si falla o no está, entras con el PIN.</div>
+  </div></details>
+
   <details class="acc"><summary>⚙️ Ajustes de la app <span class="arrow">▾</span></summary><div class="acc-body">
     <div class="grid2">
       <div class="field"><label>Moneda</label><input class="input cfg" data-cfg="moneda" value="${c.moneda}"></div>
@@ -1831,6 +1858,10 @@ function conectarEventos(){
   if($("[data-wipe]"))$("[data-wipe]").onclick=()=>confirmar("¿Borrar TODOS los datos? Esto no se puede deshacer. Haz una copia de seguridad antes.",()=>{
     DB.wipe();state=datosEjemplo();DB.save(state);aplicarTema();toast("Datos borrados");navegar("inicio");});
 
+  // Seguridad de importes (huella + PIN)
+  if($("#segPin"))$("#segPin").onclick=abrirConfigPin;
+  if($("#segBio"))$("#segBio").onclick=()=> state.config.bioCredId?quitarHuella():activarHuella();
+
   // Color pickers (en modales)
   $$('[id^="eColor"] button,[id^="hColor"] button,[id^="sColor"] button,[id$="Color"] button').forEach(b=>{
     b.onclick=()=>{const cont=b.parentElement;cont.dataset.sel=b.dataset.c;
@@ -1853,12 +1884,126 @@ function actualizarBotonPrivacidad(){
   b.style.color = oculto ? 'var(--accent)' : 'var(--txt)';
 }
 function togglePrivacidad(){
-  state.config.ocultarMontos=!state.config.ocultarMontos;
+  // Ocultar siempre es libre; revelar exige desbloqueo si la protección está activa
+  if(state.config.ocultarMontos){
+    if(state.config.protegerImportes && (state.config.pinHash || state.config.bioCredId)){
+      abrirDesbloqueo(()=>{ state.config.ocultarMontos=false; guardar(); actualizarBotonPrivacidad(); render(); toast('Importes visibles 👀'); });
+      return;
+    }
+    state.config.ocultarMontos=false;
+  } else {
+    state.config.ocultarMontos=true;
+  }
   guardar(); actualizarBotonPrivacidad(); render();
   toast(state.config.ocultarMontos?'Importes ocultos 🙈':'Importes visibles 👀');
 }
 $("#btnPrivacidad").onclick=togglePrivacidad;
 actualizarBotonPrivacidad();
+
+/* ============================================================
+   SEGURIDAD — desbloqueo por huella (WebAuthn) + PIN de respaldo
+   ============================================================ */
+function _b64url(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function _fromB64url(str){ str=str.replace(/-/g,'+').replace(/_/g,'/'); const b=atob(str); const u=new Uint8Array(b.length); for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i); return u.buffer; }
+async function _hashPin(pin,salt){ const data=new TextEncoder().encode((salt||'')+':'+pin); const h=await crypto.subtle.digest('SHA-256',data); return _b64url(h); }
+const _bioOK = ()=> !!(window.PublicKeyCredential && navigator.credentials && location.protocol==='https:');
+
+async function registrarHuella(){
+  if(!_bioOK()) throw new Error('Este dispositivo/navegador no admite huella (requiere HTTPS)');
+  const challenge=crypto.getRandomValues(new Uint8Array(32));
+  const userId=crypto.getRandomValues(new Uint8Array(16));
+  const cred=await navigator.credentials.create({ publicKey:{
+    challenge, rp:{ name:'HorasApp Pro', id:location.hostname },
+    user:{ id:userId, name:'horasapp', displayName:'HorasApp Pro' },
+    pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+    authenticatorSelection:{ authenticatorAttachment:'platform', userVerification:'required', residentKey:'preferred' },
+    timeout:60000, attestation:'none' }});
+  state.config.bioCredId=_b64url(cred.rawId); guardar(); return true;
+}
+async function pedirHuella(){
+  if(!_bioOK() || !state.config.bioCredId) return false;
+  const challenge=crypto.getRandomValues(new Uint8Array(32));
+  await navigator.credentials.get({ publicKey:{ challenge, timeout:60000, userVerification:'required',
+    allowCredentials:[{ type:'public-key', id:_fromB64url(state.config.bioCredId) }] }});
+  return true; // si resuelve, la biometría fue válida
+}
+
+function abrirDesbloqueo(onOk){
+  if(!state.config.pinHash && !state.config.bioCredId){ onOk(); return; }
+  const tieneBio = state.config.bioCredId && _bioOK();
+  const html=`
+    <div id="dsbk">
+      <div class="${tieneBio?'':'hide'}" id="dsbkBio" style="text-align:center;padding:6px 0 4px">
+        <button class="bio-btn" id="dsbkHuella" title="Usar huella">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--brand2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11v3.5M7.5 11a4.5 4.5 0 019 0v1.5M5.5 9a8 8 0 0113 0M8 13v1a8 8 0 00.7 3.2M16 12.5V14a10 10 0 01-.6 3.4M10 16.8a6 6 0 004 0"/></svg>
+        </button>
+        <div class="muted small" id="dsbkMsg" style="margin-top:8px">Toca para usar tu huella</div>
+        ${state.config.pinHash?'<button class="btn sm" id="dsbkUsarPin" style="margin-top:12px">Usar PIN</button>':''}
+      </div>
+      <div class="${tieneBio?'hide':''}" id="dsbkPin">
+        <div class="muted small" style="text-align:center;margin-bottom:10px">Introduce tu PIN</div>
+        <div class="pin-dots" id="pinDots"><i></i><i></i><i></i><i></i></div>
+        <div class="pin-pad">
+          ${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-k="${n}">${n}</button>`).join('')}
+          <button class="ghost" id="pinBio" title="Huella">${tieneBio?'👆':''}</button>
+          <button data-k="0">0</button>
+          <button class="ghost" id="pinDel">⌫</button>
+        </div>
+      </div>
+    </div>`;
+  abrirModal('Desbloquear importes', html);
+  let pin='';
+  const pintarDots=()=>{ $$("#pinDots i").forEach((x,i)=>x.classList.toggle('on',i<pin.length)); };
+  const verPin=()=>{ $("#dsbkBio")?.classList.add('hide'); $("#dsbkPin")?.classList.remove('hide'); };
+  const verBio=()=>{ if(tieneBio){ $("#dsbkPin")?.classList.add('hide'); $("#dsbkBio")?.classList.remove('hide'); } };
+  const ok=()=>{ cerrarModal(); onOk(); };
+  async function intentarHuella(){
+    const m=$("#dsbkMsg"); if(m)m.textContent='Verificando…';
+    try{ if(await pedirHuella()) ok(); }
+    catch(e){ if(m)m.textContent='No se reconoció. Usa el PIN.'; if(state.config.pinHash) verPin(); }
+  }
+  async function meterDigito(n){
+    if(pin.length>=4) return; pin+=n; pintarDots();
+    if(pin.length===4){
+      const h=await _hashPin(pin, state.config.pinSalt);
+      if(h===state.config.pinHash) ok();
+      else { const d=$("#pinDots"); d?.classList.add('shake'); setTimeout(()=>{ d?.classList.remove('shake'); pin=''; pintarDots(); },360); }
+    }
+  }
+  if($("#dsbkHuella")) $("#dsbkHuella").onclick=intentarHuella;
+  if($("#dsbkUsarPin")) $("#dsbkUsarPin").onclick=verPin;
+  if($("#pinBio")) $("#pinBio").onclick=verBio;
+  if($("#pinDel")) $("#pinDel").onclick=()=>{ pin=pin.slice(0,-1); pintarDots(); };
+  $$('.pin-pad button[data-k]').forEach(b=>b.onclick=()=>meterDigito(b.dataset.k));
+  if(tieneBio) setTimeout(intentarHuella, 300);
+}
+
+function abrirConfigPin(){
+  const html=`
+    <div class="muted small" style="margin-bottom:10px">Elige un PIN de 4 dígitos. Te lo pedirá al revelar tus importes.</div>
+    <div class="field"><label>PIN nuevo</label><input class="input" id="pinNuevo" type="password" inputmode="numeric" maxlength="4" placeholder="••••"></div>
+    <div class="field"><label>Repite el PIN</label><input class="input" id="pinRepe" type="password" inputmode="numeric" maxlength="4" placeholder="••••"></div>
+    <div class="btn-row"><button class="btn primary sm" id="pinGuardar">Guardar PIN</button>${state.config.pinHash?'<button class="btn danger sm" id="pinQuitar">Quitar PIN</button>':''}</div>`;
+  abrirModal('PIN de seguridad', html);
+  $("#pinGuardar").onclick=async()=>{
+    const a=$("#pinNuevo").value, b=$("#pinRepe").value;
+    if(!/^\d{4}$/.test(a)){ toast('El PIN debe tener 4 dígitos','err'); return; }
+    if(a!==b){ toast('Los PIN no coinciden','err'); return; }
+    const salt=_b64url(crypto.getRandomValues(new Uint8Array(16)));
+    state.config.pinSalt=salt; state.config.pinHash=await _hashPin(a,salt);
+    state.config.protegerImportes=true; guardar(); cerrarModal(); render(); toast('PIN guardado 🔒','ok');
+  };
+  if($("#pinQuitar")) $("#pinQuitar").onclick=()=>{
+    state.config.pinHash=null; state.config.pinSalt=null;
+    if(!state.config.bioCredId) state.config.protegerImportes=false;
+    guardar(); cerrarModal(); render(); toast('PIN eliminado');
+  };
+}
+async function activarHuella(){
+  try{ await registrarHuella(); state.config.protegerImportes=true; guardar(); render(); toast('Huella activada 👆','ok'); }
+  catch(e){ toast('No se pudo activar: '+(e.message||e),'err'); }
+}
+function quitarHuella(){ state.config.bioCredId=null; if(!state.config.pinHash) state.config.protegerImportes=false; guardar(); render(); toast('Huella desactivada'); }
 
 /* ============================================================
    PWA: registro de Service Worker
