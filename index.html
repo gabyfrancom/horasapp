@@ -604,6 +604,9 @@ state.pagos = state.pagos||[];
   if(!e.modoLiquidacion) e.modoLiquidacion = "mensual"; // "mensual" (Eurofirms) | "semanal" (TUETT: liquida por semana/contrato, paga a fin de mes)
 });
 (state.jornadas||[]).forEach(j=>{ if(j.contratoRef===undefined) j.contratoRef=""; });
+// Recalcular todas las jornadas existentes para poblar los campos nuevos
+// (baseCotizacion, deduccionesPct, devengoLineas) con la lógica por ETT.
+(state.jornadas||[]).forEach(j=>{ try{ recalcular(j); }catch(e){} });
 // Si las claves de nube quedaron vacías (borradas), recuperarlas de las precargadas
 { const _def=configPorDefecto();
   if(!state.config.supabaseUrl) state.config.supabaseUrl=_def.supabaseUrl;
