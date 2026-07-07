@@ -586,6 +586,8 @@ function mismoMes(iso,ref=new Date()){ const d=new Date(iso+"T00:00:00"); return
 function esConfirmada(j){ return ["Confirmada","Aceptada","Enviada a ETT","Corregida"].includes(j.estadoJornada); }
 function esPlaneada(j){ return j.estadoJornada==="Planeada" || j.estadoJornada==="Pendiente de validar"; }
 function esCobrada(j){ return j.estadoCobro==="Cobrada"; }
+/* Clave de agrupación semana/contrato (híbrido): contrato si lo tiene, si no la semana natural. */
+function claveSemana(j){ const c=(j.contratoRef||"").trim(); return c?("c:"+c):("w:"+inicioSemana(j.fecha+"T00:00:00").toISOString().slice(0,10)); }
 
 /* ============================================================
    ESTADO GLOBAL + ARRANQUE
@@ -1122,11 +1124,16 @@ function vistaNomina(){
   // Pagos del mes
   html+=`<div class="section-title">Pagos recibidos · ${MESES[ref.getMonth()]}</div>`;
   const pagosMes=state.pagos.filter(p=>p.mesCorrespondiente===clave).sort((a,b)=>(b.fechaPago||"").localeCompare(a.fechaPago||""));
-  html+= pagosMes.length? pagosMes.map(p=>`<div class="list-item">
+  html+= pagosMes.length? pagosMes.map(p=>{
+      const detalle=[];
+      if(p.semanaRef){ const js=state.jornadas.filter(j=>claveSemana(j)===p.semanaRef); if(js.length){const a=js.sort((x,y)=>x.fecha.localeCompare(y.fecha)); const c=(a[0].contratoRef||'').trim(); detalle.push(c||rangoFechas(a[0].fecha,a[a.length-1].fecha));} }
+      if(p.hotelId) detalle.push(getHotel(p.hotelId)?.nombre||'hotel');
+      const nDias=(p.jornadasAsociadas||[]).length;
+      return `<div class="list-item">
       <span class="pill-color" style="background:${getEtt(p.ettId)?.color||'#5b8cff'}"></span>
       <div class="body"><div class="title">${money(p.importeCobrado)} · ${escapeHtml(getEtt(p.ettId)?.nombre||'—')}</div>
-      <div class="sub">${fechaCorta(p.fechaPago)} · ${escapeHtml(p.concepto||'Nómina')}</div></div>
-      <button class="btn sm danger" data-delpago="${p.id}">🗑</button></div>`).join("")
+      <div class="sub">${fechaCorta(p.fechaPago)} · ${escapeHtml(p.concepto||'Nómina')}${detalle.length?` · ${escapeHtml(detalle.join(' · '))}`:''}${nDias?` · ${nDias} día(s)`:''}</div></div>
+      <button class="btn sm danger" data-delpago="${p.id}">🗑</button></div>`;}).join("")
     : `<div class="card"><div class="muted small">Sin pagos registrados este mes.</div></div>`;
   html+=`<button class="btn accent" style="margin-top:8px" data-quick="pago">💶 Registrar pago recibido</button>`;
   return html;
@@ -1506,28 +1513,78 @@ function selOpts(arr,sel){
 /* ---- Formulario PAGO ---- */
 function abrirFormPago(){
   const html=`
-  <div class="field"><label>Importe cobrado *</label><input type="number" step="0.01" class="input" id="pImporte" placeholder="0,00"></div>
+  <div class="field"><label>Empresa que pagó</label><select class="input" id="pEtt">${selOpts(state.etts,null)}</select></div>
   <div class="grid2">
     <div class="field"><label>Fecha de pago</label><input type="date" class="input" id="pFecha" value="${todayISO()}"></div>
     <div class="field"><label>Mes correspondiente</label><input type="month" class="input" id="pMes" value="${mesClave(nominaRef)}"></div>
   </div>
-  <div class="field"><label>Empresa que pagó</label><select class="input" id="pEtt">${selOpts(state.etts,null)}</select></div>
+  <div class="grid2">
+    <div class="field"><label>Semana / contrato</label><select class="input" id="pSemana"></select></div>
+    <div class="field"><label>Hotel</label><select class="input" id="pHotel"></select></div>
+  </div>
+  <div class="hint" id="pPendHint"></div>
+  <div class="field"><label>Importe cobrado *</label><input type="number" step="0.01" class="input" id="pImporte" placeholder="0,00"></div>
   <div class="field"><label>Concepto</label><input class="input" id="pConcepto" placeholder="Nómina, anticipo, extra…" value="Nómina"></div>
+  <label class="chk" style="display:flex;align-items:center;gap:6px;margin:6px 0;font-size:13px;color:var(--muted)"><input type="checkbox" id="pMarcar" checked> Marcar como cobrados los días de esta selección</label>
   <div class="field"><label>Observaciones</label><textarea class="input" id="pObs"></textarea></div>
   <button class="btn accent" id="pGuardar">Guardar pago</button>`;
   abrirModal("Registrar pago recibido", html);
+
+  // Jornadas objetivo según ETT + mes + semana/contrato + hotel (solo confirmadas)
+  const objetivo=()=>{
+    const ettId=$("#pEtt").value||null, mes=$("#pMes").value;
+    let js=state.jornadas.filter(j=>j.ettId===ettId && (j.fecha||"").startsWith(mes) && esConfirmada(j));
+    const sem=$("#pSemana").value, hot=$("#pHotel").value;
+    if(sem && sem!=="__all") js=js.filter(j=>claveSemana(j)===sem);
+    if(hot && hot!=="__all") js=js.filter(j=>(j.hotelId||"")===hot);
+    return js;
+  };
+  const actualizar=()=>{
+    const js=objetivo(); const pend=js.filter(j=>!esCobrada(j)); const pendSum=sumar(pend,"brutoEstimado");
+    $("#pPendHint").innerHTML = js.length
+      ? `${pend.length} día(s) sin cobrar en esta selección · pendiente <b>${money(pendSum)}</b>.`
+      : `Sin jornadas confirmadas para esta selección.`;
+    const imp=$("#pImporte");
+    if(pend.length && (!imp.value || imp.dataset.auto)){ imp.value=pendSum.toFixed(2); imp.dataset.auto="1"; }
+  };
+  const rellenarSelects=()=>{
+    const ettId=$("#pEtt").value||null, mes=$("#pMes").value;
+    const base=state.jornadas.filter(j=>j.ettId===ettId && (j.fecha||"").startsWith(mes) && esConfirmada(j));
+    const claves=[...new Set(base.map(claveSemana))].sort();
+    $("#pSemana").innerHTML=['<option value="__all">Todo el mes</option>'].concat(claves.map(k=>{
+      const arr=base.filter(j=>claveSemana(j)===k).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+      const c=(arr[0].contratoRef||"").trim();
+      const lbl=c?c:rangoFechas(arr[0].fecha,arr[arr.length-1].fecha);
+      const pend=sumar(arr.filter(j=>!esCobrada(j)),"brutoEstimado");
+      return `<option value="${escapeHtml(k)}">${escapeHtml(lbl)}${pend>0.5?` · pend. ${money(pend)}`:' ✓'}</option>`;
+    })).join("");
+    const hoteles=[...new Set(base.map(j=>j.hotelId||""))];
+    $("#pHotel").innerHTML=['<option value="__all">Todos</option>'].concat(hoteles.map(h=>`<option value="${escapeHtml(h)}">${escapeHtml(getHotel(h)?.nombre||'—')}</option>`)).join("");
+    actualizar();
+  };
+  $("#pImporte").oninput=function(){ delete this.dataset.auto; };
+  $("#pEtt").onchange=rellenarSelects;
+  $("#pMes").onchange=rellenarSelects;
+  $("#pSemana").onchange=actualizar;
+  $("#pHotel").onchange=actualizar;
+  rellenarSelects();
+
   $("#pGuardar").onclick=()=>{
     const imp=num($("#pImporte").value);
     if(imp<=0){toast("Indica un importe","err");$("#pImporte").classList.add("err");return;}
-    const mes=$("#pMes").value;
-    const ettId=$("#pEtt").value||null;
-    const brutoMes=sumar(state.jornadas.filter(j=>j.ettId===ettId&&j.fecha.startsWith(mes)&&esConfirmada(j)),"brutoEstimado");
-    state.pagos.push({
-      id:uid(), fechaPago:$("#pFecha").value, ettId, mesCorrespondiente:mes,
-      importeCobrado:imp, concepto:$("#pConcepto").value, jornadasAsociadas:[],
-      diferencia:+(brutoMes-imp).toFixed(2), observaciones:$("#pObs").value, createdAt:new Date().toISOString(),
-    });
-    guardar(); cerrarModal(); toast("Pago registrado ✓","ok"); render();
+    const mes=$("#pMes").value, ettId=$("#pEtt").value||null;
+    const js=objetivo(); const ids=js.map(j=>j.id);
+    const marcar=$("#pMarcar").checked;
+    const pago={ id:uid(), fechaPago:$("#pFecha").value, ettId, mesCorrespondiente:mes,
+      importeCobrado:imp, concepto:$("#pConcepto").value,
+      semanaRef: $("#pSemana").value==="__all"?null:$("#pSemana").value,
+      hotelId: $("#pHotel").value==="__all"?null:($("#pHotel").value||null),
+      jornadasAsociadas:ids,
+      diferencia:+(sumar(js,"brutoEstimado")-imp).toFixed(2), observaciones:$("#pObs").value, createdAt:new Date().toISOString() };
+    state.pagos.push(pago);
+    let marcados=0;
+    if(marcar){ js.forEach(j=>{ if(!esCobrada(j)){ j.estadoCobro="Cobrada"; j.pagoId=pago.id; marcados++; } }); }
+    guardar(); cerrarModal(); toast(`Pago registrado ✓${marcar?` · ${marcados} día(s) marcados`:''}`,"ok"); render();
   };
 }
 

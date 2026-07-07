@@ -2,7 +2,7 @@
    HTML: network-first (siempre la última versión si hay conexión).
    Iconos/manifest: cache-first (rápido y offline).
    Sube el número de versión cuando cambies archivos. */
-const CACHE = "horasapp-pro-v13";
+const CACHE = "horasapp-pro-v14";
 const ASSETS = [
   "./",
   "./index.html",
