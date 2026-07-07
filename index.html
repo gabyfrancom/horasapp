@@ -419,7 +419,7 @@ function crearJornada(p){
     plusTransporte:0, plusDesplazamiento:0, dietas:0, propinas:0,
     brutoEstimado:0, netoEstimado:0,
     estadoJornada:"Confirmada", estadoCobro:"Pendiente de cobro", estadoParte:"Sin enviar",
-    contacto:"", referencia:"", incidencia:"", pagoId:null, observaciones:"",
+    contacto:"", referencia:"", contratoRef:"", incidencia:"", pagoId:null, observaciones:"",
     createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(),
   }, p||{});
   return recalcular(j);
@@ -455,6 +455,28 @@ function tarifaEfectiva(srv, ettId, fecha){
     .forEach(k=>{ if(ov[k]!==undefined && ov[k]!=="" && ov[k]!==null) m[k]=num(ov[k]); });
   return m;
 }
+/* Deducciones efectivas de una ETT: sus % propios si los definió, o los globales
+   como plantilla. Cada % vacío hereda el global. Marca 'propia' si la ETT tiene tabla. */
+function deduccionesEtt(ettId){
+  const g = state?.config||configPorDefecto();
+  const base = {irpf:num(g.irpf),contingenciasComunes:num(g.contingenciasComunes),desempleo:num(g.desempleo),formacion:num(g.formacion),mei:num(g.mei)};
+  const e = getEtt(ettId); const d = e && e.deducciones;
+  if(!d) return {...base, propia:false};
+  const pick=k=>(d[k]!==undefined && d[k]!=="" && d[k]!==null) ? num(d[k]) : base[k];
+  return {irpf:pick("irpf"),contingenciasComunes:pick("contingenciasComunes"),desempleo:pick("desempleo"),formacion:pick("formacion"),mei:pick("mei"), propia:true};
+}
+function pctDeduccion(ded){ return (num(ded.irpf)+num(ded.contingenciasComunes)+num(ded.desempleo)+num(ded.formacion)+num(ded.mei))/100; }
+function pctSSTrab(ded){ return (num(ded.contingenciasComunes)+num(ded.desempleo)+num(ded.formacion)+num(ded.mei)); }
+/* Devengo por conceptos €/hora de la ETT (los del recibo real). Devuelve null si
+   la ETT no tiene tabla de conceptos → se usa la tarifa por servicio de siempre. */
+function devengoConceptos(ettId, horas){
+  const e = getEtt(ettId); const cs = (e && e.conceptos) || [];
+  if(!cs.length) return null;
+  const lineas = cs.map(c=>({ nombre:c.nombre, valorHora:num(c.valor), cotiza:c.cotiza!==false, importe:+(num(horas)*num(c.valor)).toFixed(2) }));
+  const bruto  = +(lineas.reduce((a,x)=>a+x.importe,0)).toFixed(2);
+  const baseCot= +(lineas.filter(x=>x.cotiza).reduce((a,x)=>a+x.importe,0)).toFixed(2);
+  return {lineas, bruto, baseCot};
+}
 function recalcular(j){
   const srv = getServicio(j.servicioId);
   // Horas: si no se desglosan, usar diferencia entrada/salida como horas normales
@@ -486,14 +508,25 @@ function recalcular(j){
   j.plusTotal=+(pT+pD).toFixed(2);
 
   const dietas=num(j.dietas), propinas=num(j.propinas);
-  j.brutoEstimado=+(j.impNormales+j.impNocturnas+j.impFestivas+j.impExtra+pT+pD+dietas+propinas).toFixed(2);
 
-  // Neto estimado: aplica deducciones sobre base imponible (excluye dietas y propinas exentas)
-  const c=state?.config||configPorDefecto();
-  const pctDed=(num(c.irpf)+num(c.contingenciasComunes)+num(c.desempleo)+num(c.formacion)+num(c.mei))/100;
-  const baseImponible=Math.max(0,j.brutoEstimado-dietas-propinas);
-  j.deducciones=+(baseImponible*pctDed).toFixed(2);
-  j.netoEstimado=+(j.brutoEstimado-j.deducciones).toFixed(2);
+  // Devengo: si la ETT tiene conceptos €/hora (recibo real) se usan esos; si no,
+  // la tarifa por servicio de siempre. La base de cotización sólo suma lo cotizable.
+  const dc = devengoConceptos(j.ettId, j.horasTotales);
+  if(dc){
+    j.devengoLineas  = dc.lineas;
+    j.brutoEstimado  = +(dc.bruto + dietas + propinas).toFixed(2);
+    j.baseCotizacion = dc.baseCot;
+  } else {
+    j.devengoLineas  = null;
+    j.brutoEstimado  = +(j.impNormales+j.impNocturnas+j.impFestivas+j.impExtra+pT+pD+dietas+propinas).toFixed(2);
+    j.baseCotizacion = Math.max(0, j.brutoEstimado - dietas - propinas);
+  }
+
+  // Deducciones: % propios de la ETT (o globales como plantilla), sobre la base de cotización.
+  const ded = deduccionesEtt(j.ettId);
+  j.deduccionesPct = pctDeduccion(ded);
+  j.deducciones    = +(j.baseCotizacion * j.deduccionesPct).toFixed(2);
+  j.netoEstimado   = +(j.brutoEstimado - j.deducciones).toFixed(2);
   j.updatedAt=new Date().toISOString();
   return j;
 }
@@ -563,6 +596,14 @@ if(!state){ state = datosEjemplo(); primeraVez=true; DB.save(state); }
 // Migración suave: garantizar campos nuevos
 state.config = Object.assign(configPorDefecto(), state.config||{});
 state.pagos = state.pagos||[];
+// Migración: cada ETT puede tener sus propios conceptos €/hora (devengos del recibo)
+// y sus propias deducciones. Si deducciones es null, hereda las globales como plantilla.
+(state.etts||[]).forEach(e=>{
+  if(!Array.isArray(e.conceptos)) e.conceptos = [];
+  if(e.deducciones===undefined) e.deducciones = null;
+  if(!e.modoLiquidacion) e.modoLiquidacion = "mensual"; // "mensual" (Eurofirms) | "semanal" (TUETT: liquida por semana/contrato, paga a fin de mes)
+});
+(state.jornadas||[]).forEach(j=>{ if(j.contratoRef===undefined) j.contratoRef=""; });
 // Si las claves de nube quedaron vacías (borradas), recuperarlas de las precargadas
 { const _def=configPorDefecto();
   if(!state.config.supabaseUrl) state.config.supabaseUrl=_def.supabaseUrl;
@@ -953,32 +994,64 @@ function vistaNomina(){
   if(sinValidar.length) al.push({tipo:"info",ic:"🕓",txt:`<b>${sinValidar.length}</b> turno(s) planeados sin validar este mes.`});
   if(al.length) html+=`<div class="section-title">Avisos del mes</div>`+al.map(a=>`<div class="alert ${a.tipo}"><span class="ic">${a.ic}</span><div>${a.txt}</div></div>`).join("");
 
-  // Desglose deducciones
-  html+=`<div class="section-title">Deducciones estimadas (editables en Ajustes)</div>
+  // Desglose deducciones (agregado real: cada jornada ya aplica las tasas de SU ETT)
+  const dedTot=sumar(conf,"deducciones"), baseCotTot=sumar(conf,"baseCotizacion");
+  const exentasTot=+(baseImp - baseCotTot).toFixed(2); // dietas/propinas y conceptos no cotizables
+  html+=`<div class="section-title">Deducciones estimadas del mes (por ETT)</div>
   <div class="card">
-    <div class="tline"><span>Base imponible (bruto − dietas − propinas)</span><b>${money(baseImp)}</b></div>
-    <div class="tline"><span>Contingencias comunes (${c.contingenciasComunes}%)</span><b>−${money(baseImp*num(c.contingenciasComunes)/100)}</b></div>
-    <div class="tline"><span>Desempleo (${c.desempleo}%)</span><b>−${money(baseImp*num(c.desempleo)/100)}</b></div>
-    <div class="tline"><span>Formación (${c.formacion}%)</span><b>−${money(baseImp*num(c.formacion)/100)}</b></div>
-    <div class="tline"><span>MEI (${c.mei}%)</span><b>−${money(baseImp*num(c.mei)/100)}</b></div>
-    <div class="tline"><span>Seguridad Social total (${pctSS.toFixed(2)}%)</span><b>−${money(baseImp*pctSS/100)}</b></div>
-    <div class="tline"><span>IRPF (${c.irpf}%)</span><b>−${money(baseImp*num(c.irpf)/100)}</b></div>
-    <div class="tline"><span>Dietas + propinas (exentas)</span><b>+${money(sumar(conf,'dietas')+sumar(conf,'propinas'))}</b></div>
+    <div class="tline"><span>Bruto confirmado</span><b>${money(bruto)}</b></div>
+    <div class="tline"><span>Base de cotización (lo que cotiza)</span><b>${money(baseCotTot)}</b></div>
+    <div class="tline"><span>Deducciones totales (Seg. Social + IRPF)</span><b style="color:var(--danger)">−${money(dedTot)}</b></div>
     <div class="tline"><span><b>Neto estimado</b></span><b style="color:var(--accent)">${money(neto)}</b></div>
+    <div class="hint">Cada ETT aplica sus propios porcentajes. El detalle por semana está más abajo.</div>
   </div>`;
 
-  // Liquidación por ETT con sus complementos/descuentos propios
-  html+=`<div class="section-title">Liquidación por ETT (conceptos propios)</div>`;
+  // Nómina por ETT (mensual como Eurofirms · semana/contrato como TUETT)
+  html+=`<div class="section-title">Nómina por ETT · semana / mes</div>`;
   const ettsMes=[...new Set(conf.map(j=>j.ettId))].filter(Boolean);
   if(!ettsMes.length) html+=`<div class="card"><div class="muted small">Sin jornadas confirmadas este mes.</div></div>`;
   else html+=ettsMes.map(id=>{
-    const e=getEtt(id); const L=liquidacionEtt(id,ref);
-    return `<details class="acc"><summary><span><span class="pill-color" style="background:${e?.color||'#5b8cff'}"></span> ${escapeHtml(e?.nombre||'—')}</span> <b>${money(L.neto)}</b></summary><div class="acc-body">
-      <div class="tline"><span>Bruto del mes</span><b>${money(L.bruto)}</b></div>
+    const e=getEtt(id); const modo=(e&&e.modoLiquidacion)||"mensual";
+    const S=liquidacionSemanalEtt(id,ref); const L=liquidacionEtt(id,ref);
+    const netoFinal=+(S.tot.neto + L.sumComp - L.sumDesc).toFixed(2);
+    const sinCobrar=S.bloques.reduce((a,b)=>a+b.dias.filter(j=>!esCobrada(j)).length,0);
+    const dedNota=S.ded.propia
+      ? `<div class="hint">Deducciones propias: SS ${pctSSTrab(S.ded).toFixed(2)}%${num(S.ded.irpf)?` · IRPF ${S.ded.irpf}%`:' · sin IRPF'}.</div>`
+      : `<div class="hint">Deducciones globales (SS ${pctSSTrab(S.ded).toFixed(2)}%). Defínelas propias en ✏️ si difiere.</div>`;
+    let cuerpo="";
+    if(modo==="semanal"){
+      cuerpo = S.bloques.map(b=>`
+        <div style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0">
+          <div class="tline" style="border-bottom:1px solid var(--line);padding-bottom:6px">
+            <span><b>${b.label?escapeHtml(b.label):'Semana'}</b> <span class="muted small">${rangoFechas(b.fIni,b.fFin)} · ${fhoras(b.horas)}</span><br><span class="chip dot ${chipClase(b.estadoCobro)}">${b.estadoCobro}</span></span>
+            <b>${money(b.neto)}</b></div>
+          ${b.dias.map(j=>`<div class="tline" style="border:0;padding:3px 0 3px 4px">
+            <span>${diaCortoLabel(j.fecha)} <span class="muted small">${fhoras(j.horasTotales)}</span> <span class="chip dot ${chipClase(j.estadoCobro)}">${esCobrada(j)?'Cobrada':'Pend.'}</span></span>
+            <b>${money(j.brutoEstimado)}</b></div>`).join('')}
+          <div class="tline" style="border:0;padding:2px 0"><span class="muted small">Base cotiz. · deducc. (${(S.pct*100).toFixed(2)}%)</span><span class="small">${money(b.base)} · <span style="color:var(--danger)">−${money(b.deduc)}</span></span></div>
+          <div class="tline" style="border-top:1px solid var(--line);padding-top:6px"><span><b>Neto ${b.label?'contrato':'semana'}</b></span><b style="color:var(--accent)">${money(b.neto)}</b></div>
+          ${b.estadoCobro!=='Cobrada'?`<button class="btn sm" data-cobrar-grupo="${b.ids.join(',')}" style="margin-top:6px">💶 Marcar cobrada</button>`:''}
+        </div>`).join('');
+    } else {
+      cuerpo = `<div style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0">
+        <div class="tline"><span>Bruto del mes <span class="muted small">${fhoras(S.tot.horas)} · ${S.nJornadas} j</span></span><b>${money(S.tot.bruto)}</b></div>
+        <div class="tline"><span class="muted small">Base cotización</span><span class="muted small">${money(S.tot.base)}</span></div>
+        <div class="tline"><span class="muted small">Deducciones (${(S.pct*100).toFixed(2)}%)</span><span class="small" style="color:var(--danger)">−${money(S.tot.deduc)}</span></div>
+        <div class="tline" style="border-top:1px solid var(--line);padding-top:6px"><span><b>Neto del mes</b></span><b style="color:var(--accent)">${money(S.tot.neto)}</b></div>
+      </div>`;
+    }
+    return `<details class="acc"><summary>
+      <span><span class="pill-color" style="background:${e?.color||'#5b8cff'}"></span> ${escapeHtml(e?.nombre||'—')}
+      <span class="chip dot ${modo==='semanal'?'c-planeada':'c-confirmada'}">${modo==='semanal'?'semanal':'mensual'}</span>
+      <span class="muted small">${S.nJornadas} j · ${fhoras(S.tot.horas)}${sinCobrar?` · ${sinCobrar} sin cobrar`:''}</span></span>
+      <b>${money(netoFinal)}</b></summary><div class="acc-body">
+      ${dedNota}
+      ${cuerpo}
+      ${(L.comp.length||L.desc.length)?`<div class="muted small" style="margin-top:6px">Ajustes del mes:</div>`:''}
       ${L.comp.map(c=>`<div class="tline"><span>+ ${escapeHtml(c.nombre)}${c.tipo==='pct'?` (${c.valor}%)`:''}</span><b style="color:var(--accent)">+${money(c.importe)}</b></div>`).join('')}
       ${L.desc.map(c=>`<div class="tline"><span>− ${escapeHtml(c.nombre)}${c.tipo==='pct'?` (${c.valor}%)`:''}</span><b style="color:var(--danger)">−${money(c.importe)}</b></div>`).join('')}
-      <div class="tline"><span><b>Neto liquidación</b></span><b style="color:var(--accent)">${money(L.neto)}</b></div>
-      ${L.tiene?'':'<div class="hint">Sin complementos/descuentos propios todavía. Añádelos en Ajustes → 🏢 ETT → ✏️.</div>'}
+      <div class="tline"><span><b>Neto ETT (mes)</b></span><b style="color:var(--accent)">${money(netoFinal)}</b></div>
+      <div class="tline"><span class="muted small">Cobrado del mes</span><span class="muted small">${money(S.tot.cobrado)} / ${money(S.tot.bruto)}${S.tot.pendiente>0.5?` · <span style="color:var(--warn)">${money(S.tot.pendiente)} pend.</span>`:''}</span></div>
     </div></details>`;
   }).join('');
 
@@ -1010,6 +1083,46 @@ function liquidacionEtt(ettId, ref){
   const sumComp=comp.reduce((a,x)=>a+x.importe,0);
   const sumDesc=desc.reduce((a,x)=>a+x.importe,0);
   return { bruto, comp, desc, sumComp, sumDesc, neto:+(bruto+sumComp-sumDesc).toFixed(2), tiene:(comp.length+desc.length)>0 };
+}
+/* Etiquetas de fecha para la vista semanal */
+function rangoFechas(a,b){
+  const da=new Date(a+"T00:00:00"), db=new Date(b+"T00:00:00");
+  const mA=MESES[da.getMonth()].slice(0,3).toLowerCase(), mB=MESES[db.getMonth()].slice(0,3).toLowerCase();
+  if(a===b) return `${da.getDate()} ${mA}`;
+  if(da.getMonth()===db.getMonth()) return `Del ${da.getDate()} al ${db.getDate()} ${mB}`;
+  return `Del ${da.getDate()} ${mA} al ${db.getDate()} ${mB}`;
+}
+function diaCortoLabel(iso){ const d=new Date(iso+"T00:00:00"); const dd=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"]; return `${dd[d.getDay()]} ${String(d.getDate()).padStart(2,"0")}`; }
+/* Estado de cobro agregado de un grupo de jornadas (semana/contrato). */
+function estadoCobroGrupo(dias){
+  const cob=dias.filter(esCobrada).length;
+  if(cob===0) return "Pendiente de cobro";
+  if(cob>=dias.length) return "Cobrada";
+  return "Parcialmente cobrada";
+}
+/* Liquidación de una ETT desglosada por SEMANA/CONTRATO (híbrido: si la jornada tiene
+   referencia de contrato agrupa por ella; si no, por semana natural). */
+function liquidacionSemanalEtt(ettId, ref){
+  const e=getEtt(ettId);
+  const mes=state.jornadas.filter(j=>j.ettId===ettId && mismoMes(j.fecha,ref) && esConfirmada(j));
+  const grupos={};
+  mes.forEach(j=>{
+    const cref=(j.contratoRef||"").trim();
+    const k = cref ? "c:"+cref : "w:"+inicioSemana(j.fecha+"T00:00:00").toISOString().slice(0,10);
+    (grupos[k]=grupos[k]||{dias:[],label:cref||null}).dias.push(j);
+  });
+  const ded=deduccionesEtt(ettId); const pct=pctDeduccion(ded);
+  const bloques=Object.values(grupos).map(g=>{
+    const dias=g.dias.sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    const horas=sumar(dias,"horasTotales"), bruto=sumar(dias,"brutoEstimado"), base=sumar(dias,"baseCotizacion");
+    const deduc=+(base*pct).toFixed(2), neto=+(bruto-deduc).toFixed(2);
+    return {label:g.label, fIni:dias[0].fecha, fFin:dias[dias.length-1].fecha, dias, ids:dias.map(x=>x.id),
+            horas, bruto, base, deduc, neto, estadoCobro:estadoCobroGrupo(dias)};
+  }).sort((a,b)=>a.fIni.localeCompare(b.fIni));
+  const tot={horas:sumar(mes,"horasTotales"), bruto:sumar(mes,"brutoEstimado"), base:sumar(mes,"baseCotizacion")};
+  tot.deduc=+(tot.base*pct).toFixed(2); tot.neto=+(tot.bruto-tot.deduc).toFixed(2);
+  tot.cobrado=sumar(mes.filter(esCobrada),"brutoEstimado"); tot.pendiente=+(tot.bruto-tot.cobrado).toFixed(2);
+  return {e, ded, pct, bloques, tot, nJornadas:mes.length};
 }
 function resumenAgrupado(jornadas,keyFn,nameFn,colorFn,ref){
   const g={};
@@ -1249,6 +1362,7 @@ function abrirFormJornada(jornada=null, fechaPre=null, servicioPre=null){
       <div class="field"><label>Responsable</label><input class="input" id="jContacto" value="${escapeHtml(j.contacto||'')}"></div>
       <div class="field"><label>Nº parte / ref.</label><input class="input" id="jRef" value="${escapeHtml(j.referencia||'')}"></div>
     </div>
+    <div class="field"><label>Referencia de contrato <span class="muted small">(opcional · agrupa la liquidación semanal)</span></label><input class="input" id="jContrato" value="${escapeHtml(j.contratoRef||'')}" placeholder="p. ej. TUETT sem 23-27"></div>
     <div class="field"><label>Observaciones</label><textarea class="input" id="jObs">${escapeHtml(j.observaciones||'')}</textarea></div>
   </details>
 
@@ -1284,7 +1398,7 @@ function abrirFormJornada(jornada=null, fechaPre=null, servicioPre=null){
       plusTransporte:num($("#jPT").value), plusDesplazamiento:num($("#jPD").value),
       dietas:num($("#jDietas").value), propinas:num($("#jPropinas").value),
       estadoJornada:$("#jEstadoJ").value, estadoCobro:$("#jEstadoC").value, estadoParte:$("#jEstadoP").value,
-      contacto:$("#jContacto").value, referencia:$("#jRef").value, observaciones:$("#jObs").value,
+      contacto:$("#jContacto").value, referencia:$("#jRef").value, contratoRef:$("#jContrato").value.trim(), observaciones:$("#jObs").value,
     };
   }
   function previewCalc(){
@@ -1368,8 +1482,22 @@ function filaConcepto(c={}){
     <button type="button" class="btn ghost sm cn-del" style="flex:0 0 auto">🗑</button>
   </div>`;
 }
+// Fila editable de un concepto de devengo €/HORA (los del recibo: salario base, prorratas, pluses)
+function filaConceptoHora(c={}){
+  const cot = c.cotiza!==false;
+  return `<div class="row concepto-hora-fila" style="gap:6px;margin-bottom:6px;align-items:center">
+    <input class="input ch-nombre" placeholder="Concepto (p. ej. Salario base)" value="${escapeHtml(c.nombre||'')}" style="flex:2">
+    <input type="number" step="0.0001" class="input ch-valor" placeholder="€/h" value="${c.valor??''}" style="flex:1">
+    <label class="chk" title="¿Cotiza a la Seguridad Social?" style="flex:0 0 auto;display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)">
+      <input type="checkbox" class="ch-cotiza" ${cot?'checked':''}> cotiza</label>
+    <button type="button" class="btn ghost sm ch-del" style="flex:0 0 auto">🗑</button>
+  </div>`;
+}
 function abrirFormEtt(ett=null){
-  const e=ett||{nombre:"",color:COLORES[state.etts.length%COLORES.length],contacto:"",email:"",telefono:"",cif:"",activa:true,observaciones:"",complementos:[],descuentos:[]};
+  const e=ett||{nombre:"",color:COLORES[state.etts.length%COLORES.length],contacto:"",email:"",telefono:"",cif:"",activa:true,observaciones:"",complementos:[],descuentos:[],conceptos:[],deducciones:null,modoLiquidacion:"mensual"};
+  const ded = e.deducciones||{}; const gcfg = state.config||configPorDefecto();
+  const dv = k => (ded[k]!==undefined && ded[k]!==null && ded[k]!=="") ? ded[k] : "";
+  const gph = k => gcfg[k];  // placeholder = valor global heredado
   abrirModal(ett?"Editar ETT":"Nueva ETT",`
     <div class="field"><label>Nombre *</label><input class="input" id="eNombre" value="${escapeHtml(e.nombre)}"></div>
     <div class="field"><label>Color</label>${colorPicker("eColor",e.color)}</div>
@@ -1382,6 +1510,13 @@ function abrirFormEtt(ett=null){
       <div class="field"><label>CIF/NIF</label><input class="input" id="eCif" value="${escapeHtml(e.cif||'')}"></div>
     </div>
     <div class="field"><label>Observaciones</label><textarea class="input" id="eObs">${escapeHtml(e.observaciones||'')}</textarea></div>
+    <div class="field"><label>Modo de liquidación</label>
+      <select class="input" id="eModo">
+        <option value="mensual" ${e.modoLiquidacion!=='semanal'?'selected':''}>Mensual (una nómina al mes · Eurofirms)</option>
+        <option value="semanal" ${e.modoLiquidacion==='semanal'?'selected':''}>Semanal por contrato · pago mensual (TUETT)</option>
+      </select>
+      <div class="hint">"Semanal" desglosa el mes en liquidaciones por semana/contrato; el cobro sigue siendo mensual.</div>
+    </div>
     <details class="acc"><summary>💶 Complementos y descuentos de esta ETT <span class="arrow">▾</span></summary><div class="acc-body">
       <div class="hint">Conceptos propios de esta ETT para afinar la liquidación mensual. Importe fijo (€/mes) o porcentaje (% del bruto del mes en esta ETT).</div>
       <div style="font-weight:800;margin:10px 0 6px;color:var(--accent)">Complementos (suman)</div>
@@ -1391,6 +1526,25 @@ function abrirFormEtt(ett=null){
       <div id="ettDescuentos">${(e.descuentos||[]).map(filaConcepto).join('')}</div>
       <button type="button" class="btn ghost sm" id="addDescuento">＋ Añadir descuento</button>
     </div></details>
+    <details class="acc"><summary>🧾 Conceptos €/hora del recibo (devengos) <span class="arrow">▾</span></summary><div class="acc-body">
+      <div class="hint">Los conceptos tal como aparecen en la nómina de esta ETT, en €/hora. El bruto estimado de cada jornada = horas × suma de estos conceptos. Marca "cotiza" si el concepto entra en la base de la Seguridad Social.</div>
+      <button type="button" class="btn ghost sm" id="plantillaTuett" style="margin:8px 0">📋 Cargar plantilla del recibo TUETT</button>
+      <div id="ettConceptosHora">${(e.conceptos||[]).map(filaConceptoHora).join('')}</div>
+      <button type="button" class="btn ghost sm" id="addConceptoHora">＋ Añadir concepto</button>
+    </div></details>
+    <details class="acc"><summary>📉 Deducciones propias de esta ETT (Seg. Social + IRPF) <span class="arrow">▾</span></summary><div class="acc-body">
+      <div class="hint">Porcentajes a cuenta del trabajador para ESTA ETT. Déjalos vacíos para heredar los globales (mostrados como referencia). TUETT no lleva IRPF; Eurofirms puede llevarlo.</div>
+      <div class="grid2">
+        <div class="field"><label>Contingencias comunes %</label><input type="number" step="0.01" class="input ded-cfg" data-ded="contingenciasComunes" placeholder="global: ${gph('contingenciasComunes')}" value="${dv('contingenciasComunes')}"></div>
+        <div class="field"><label>Desempleo %</label><input type="number" step="0.01" class="input ded-cfg" data-ded="desempleo" placeholder="global: ${gph('desempleo')}" value="${dv('desempleo')}"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Formación %</label><input type="number" step="0.01" class="input ded-cfg" data-ded="formacion" placeholder="global: ${gph('formacion')}" value="${dv('formacion')}"></div>
+        <div class="field"><label>MEI %</label><input type="number" step="0.01" class="input ded-cfg" data-ded="mei" placeholder="global: ${gph('mei')}" value="${dv('mei')}"></div>
+      </div>
+      <div class="field"><label>IRPF %</label><input type="number" step="0.01" class="input ded-cfg" data-ded="irpf" placeholder="global: ${gph('irpf')}" value="${dv('irpf')}"></div>
+      <label class="chk" style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:13px;color:var(--muted)"><input type="checkbox" id="dedPropia" ${e.deducciones?'checked':''}> Usar deducciones propias de esta ETT (si lo desmarcas, hereda las globales)</label>
+    </div></details>
     <div class="list-item" style="justify-content:space-between"><div class="body"><div class="title">Activa</div></div>
       <label class="switch"><input type="checkbox" id="eActiva" ${e.activa?'checked':''}><span class="sl"></span></label></div>
     <div class="btn-row" style="margin-top:8px">
@@ -1399,18 +1553,56 @@ function abrirFormEtt(ett=null){
   // Añadir/borrar filas de conceptos
   $("#addComplemento").onclick=()=>$("#ettComplementos").insertAdjacentHTML("beforeend",filaConcepto());
   $("#addDescuento").onclick=()=>$("#ettDescuentos").insertAdjacentHTML("beforeend",filaConcepto());
-  $("#modal-root").addEventListener("click",e=>{ if(e.target.classList&&e.target.classList.contains("cn-del")) e.target.closest(".concepto-fila")?.remove(); });
+  $("#addConceptoHora").onclick=()=>$("#ettConceptosHora").insertAdjacentHTML("beforeend",filaConceptoHora());
+  // Plantilla del recibo TUETT: conceptos €/hora + deducciones (sin IRPF)
+  $("#plantillaTuett").onclick=()=>{
+    const PLANTILLA_TUETT=[
+      {nombre:"Salario base",valor:7.6476,cotiza:true},
+      {nombre:"Prorrata pagas extras",valor:1.3825,cotiza:true},
+      {nombre:"PP vacaciones no disfrutadas",valor:0.6951,cotiza:true},
+      {nombre:"Plus transporte",valor:0.4601,cotiza:true},
+      {nombre:"Bolsa de vacaciones",valor:0.7520,cotiza:true},
+      {nombre:"Plus mantenimiento ropa",valor:0.2027,cotiza:true},
+    ];
+    $("#ettConceptosHora").innerHTML=PLANTILLA_TUETT.map(filaConceptoHora).join('');
+    const setDed=(k,v)=>{const el=$(`.ded-cfg[data-ded="${k}"]`); if(el) el.value=v;};
+    setDed("contingenciasComunes",4.70); setDed("desempleo",1.55); setDed("formacion",0.10); setDed("mei",0.15); setDed("irpf",0);
+    $("#dedPropia").checked=true;
+    const modoSel=$("#eModo"); if(modoSel) modoSel.value="semanal"; // TUETT liquida por semana/contrato
+    toast("Plantilla TUETT cargada (modo semanal). Revisa y guarda ✓","ok");
+  };
+  $("#modal-root").addEventListener("click",e=>{
+    if(e.target.classList&&e.target.classList.contains("cn-del")) e.target.closest(".concepto-fila")?.remove();
+    if(e.target.classList&&e.target.classList.contains("ch-del")) e.target.closest(".concepto-hora-fila")?.remove();
+  });
   const leerConceptos=sel=>[...$(sel).querySelectorAll(".concepto-fila")].map(f=>({
     nombre:$(".cn-nombre",f).value.trim(), valor:num($(".cn-valor",f).value), tipo:$(".cn-tipo",f).value
   })).filter(c=>c.nombre);
+  const leerConceptosHora=()=>[...$("#ettConceptosHora").querySelectorAll(".concepto-hora-fila")].map(f=>({
+    nombre:$(".ch-nombre",f).value.trim(), valor:num($(".ch-valor",f).value), cotiza:$(".ch-cotiza",f).checked
+  })).filter(c=>c.nombre);
+  const leerDeducciones=()=>{
+    if(!$("#dedPropia").checked) return null;
+    const o={}; let alguno=false;
+    [...$("#modal-root").querySelectorAll(".ded-cfg")].forEach(el=>{
+      const k=el.dataset.ded, v=el.value.trim();
+      if(v!==""){ o[k]=num(v); alguno=true; }
+    });
+    return alguno?o:{}; // {} = propia pero todo heredado; null = no propia
+  };
 
   $("#eGuardar").onclick=()=>{
     const nombre=$("#eNombre").value.trim();
     if(!nombre){toast("Falta el nombre","err");return;}
     const obj={nombre,color:colorSel("eColor"),contacto:$("#eContacto").value,telefono:$("#eTel").value,
       email:$("#eEmail").value,cif:$("#eCif").value,observaciones:$("#eObs").value,activa:$("#eActiva").checked,
-      complementos:leerConceptos("#ettComplementos"), descuentos:leerConceptos("#ettDescuentos")};
-    if(ett)Object.assign(ett,obj); else state.etts.push(Object.assign({id:uid()},obj));
+      complementos:leerConceptos("#ettComplementos"), descuentos:leerConceptos("#ettDescuentos"),
+      conceptos:leerConceptosHora(), deducciones:leerDeducciones(), modoLiquidacion:$("#eModo").value};
+    let ettId;
+    if(ett){ Object.assign(ett,obj); ettId=ett.id; }
+    else { const nuevo=Object.assign({id:uid()},obj); state.etts.push(nuevo); ettId=nuevo.id; }
+    // Recalcular las jornadas de esta ETT: sus conceptos/deducciones cambian bruto y neto
+    state.jornadas.forEach(j=>{ if(j.ettId===ettId) recalcular(j); });
     guardar();cerrarModal();toast("ETT guardada ✓","ok");render();
   };
   if(ett)$("#eBorrar").onclick=()=>confirmar("¿Eliminar ETT? (las jornadas quedan sin ETT)",()=>{
@@ -1795,6 +1987,10 @@ function conectarEventos(){
   $$("[data-nuevo-en]").forEach(b=>b.onclick=()=>abrirFormJornada(null,b.dataset.nuevoEn));
 
   // Nómina
+  $$("[data-cobrar-grupo]").forEach(b=>b.onclick=e=>{e.stopPropagation();
+    const ids=(b.dataset.cobrarGrupo||"").split(",").filter(Boolean);
+    ids.forEach(id=>{const j=state.jornadas.find(x=>x.id===id); if(j) j.estadoCobro="Cobrada";});
+    guardar();toast(`Liquidación marcada como cobrada 💶 (${ids.length} día/s)`,"ok");render();});
   $$("[data-nomnav]").forEach(b=>b.onclick=()=>{nominaRef.setMonth(nominaRef.getMonth()+ +b.dataset.nomnav);render();});
   $$("[data-delpago]").forEach(b=>b.onclick=()=>confirmar("¿Eliminar este pago?",()=>{state.pagos=state.pagos.filter(p=>p.id!==b.dataset.delpago);guardar();toast("Pago eliminado");render();}));
 
