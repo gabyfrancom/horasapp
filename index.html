@@ -980,6 +980,42 @@ function controlCobrosPor(jornadas, keyFn, nameFn, colorFn){
   }).join("")+`</div>`;
 }
 
+/* División anidada: SEMANA/CONTRATO (nivel superior) → HOTEL → días.
+   Responde "¿me pagaron todos los días?" cruzando semana × hotel. */
+function controlSemanaHotel(ref){
+  const mes=state.jornadas.filter(j=>mismoMes(j.fecha,ref)&&esConfirmada(j));
+  if(!mes.length) return `<div class="card"><div class="muted small">Sin jornadas confirmadas este mes.</div></div>`;
+  const grupos={};
+  mes.forEach(j=>{
+    const cref=(j.contratoRef||"").trim();
+    const k=cref?"c:"+cref:"w:"+inicioSemana(j.fecha+"T00:00:00").toISOString().slice(0,10);
+    (grupos[k]=grupos[k]||{dias:[],label:cref||null}).dias.push(j);
+  });
+  const bloques=Object.values(grupos).map(g=>{
+    const dias=g.dias.sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    return {label:g.label, fIni:dias[0].fecha, fFin:dias[dias.length-1].fecha, dias};
+  }).sort((a,b)=>a.fIni.localeCompare(b.fIni));
+  return bloques.map(b=>{
+    const totBruto=sumar(b.dias,"brutoEstimado");
+    const pend=b.dias.filter(j=>!esCobrada(j));
+    const porHotel={};
+    b.dias.forEach(j=>{ const h=j.hotelId||"x"; (porHotel[h]=porHotel[h]||[]).push(j); });
+    return `<details class="acc" open><summary>
+      <span><b>${b.label?escapeHtml(b.label):rangoFechas(b.fIni,b.fFin)}</b> <span class="muted small">${b.dias.length} día(s)${pend.length?` · <span style="color:var(--warn)">${pend.length} sin cobrar</span>`:' · ✓'}</span></span>
+      <b>${money(totBruto)}</b></summary><div class="acc-body">
+      ${Object.keys(porHotel).map(h=>{
+        const arr=porHotel[h].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+        const cob=arr.filter(esCobrada).length;
+        return `<div style="border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin:6px 0">
+          <div class="tline" style="border-bottom:1px solid var(--line);padding-bottom:5px"><span><span class="pill-color" style="background:${getHotel(h)?.color||'#5b8cff'};vertical-align:middle"></span> <b>${escapeHtml(getHotel(h)?.nombre||'—')}</b></span>
+            <span class="small">${cob<arr.length?`<span style="color:var(--warn)">${cob}/${arr.length} cobrados</span>`:`<span style="color:var(--ok)">${arr.length}/${arr.length} ✓</span>`}</span></div>
+          ${arr.map(j=>`<div class="tline" style="border:0;padding:2px 0 2px 4px"><span>${diaCortoLabel(j.fecha)} <span class="muted small">${escapeHtml(nombreServicio(j))}</span> <span class="chip dot ${chipClase(j.estadoCobro)}">${esCobrada(j)?'Cobrada':'Pend.'}</span></span><b>${money(j.brutoEstimado)}</b></div>`).join('')}
+        </div>`;
+      }).join('')}
+    </div></details>`;
+  }).join('');
+}
+
 /* ============================================================
    VISTA: NÓMINA / COBROS
    ============================================================ */
@@ -1078,9 +1114,10 @@ function vistaNomina(){
   }).join('');
 
   // Resumen por ETT / hotel / servicio
+  html+=`<div class="section-title">¿Me pagaron todos los días? · Por semana/contrato → hotel</div>`+controlSemanaHotel(ref);
   html+=`<div class="section-title">Por ETT</div>`+resumenAgrupado(conf,j=>j.ettId,id=>getEtt(id)?.nombre,id=>getEtt(id)?.color,ref);
-  html+=`<div class="section-title">¿Me pagaron todos los días? · Por hotel</div>`+controlCobrosPor(conf,j=>j.hotelId,id=>getHotel(id)?.nombre,id=>getHotel(id)?.color);
-  html+=`<div class="section-title">¿Me pagaron todos los días? · Por servicio</div>`+controlCobrosPor(conf,j=>j.servicioId,id=>getServicio(id)?.nombre,id=>getServicio(id)?.color);
+  html+=`<div class="section-title">Resumen del mes · Por hotel</div>`+controlCobrosPor(conf,j=>j.hotelId,id=>getHotel(id)?.nombre,id=>getHotel(id)?.color);
+  html+=`<div class="section-title">Resumen del mes · Por servicio</div>`+controlCobrosPor(conf,j=>j.servicioId,id=>getServicio(id)?.nombre,id=>getServicio(id)?.color);
 
   // Pagos del mes
   html+=`<div class="section-title">Pagos recibidos · ${MESES[ref.getMonth()]}</div>`;
