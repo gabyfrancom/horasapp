@@ -961,6 +961,25 @@ function detalleDia(iso,solo=false){
   return html;
 }
 
+/* Control de cobros agrupado (por hotel o servicio): cuántos días cobrados de cuántos,
+   y LAS FECHAS concretas sin cobrar. Responde "¿me pagaron todos los días?". */
+function controlCobrosPor(jornadas, keyFn, nameFn, colorFn){
+  const g={};
+  jornadas.forEach(j=>{ const k=keyFn(j)||"x"; (g[k]=g[k]||[]).push(j); });
+  const keys=Object.keys(g);
+  if(!keys.length) return `<div class="card"><div class="muted small">Sin datos este mes.</div></div>`;
+  return `<div class="card">`+keys.map(k=>{
+    const arr=g[k].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    const cob=arr.filter(esCobrada), pend=arr.filter(j=>!esCobrada(j));
+    const brutoPend=sumar(pend,"brutoEstimado");
+    return `<div style="padding:6px 0;border-bottom:1px solid var(--line)">
+      <div class="tline" style="border:0"><span><span class="pill-color" style="background:${colorFn(k)||'#5b8cff'};vertical-align:middle"></span> <b>${escapeHtml(nameFn(k)||'—')}</b></span>
+        <span class="small">${pend.length?`<span style="color:var(--warn)">${cob.length}/${arr.length} cobrados</span>`:`<span style="color:var(--ok)">${arr.length}/${arr.length} ✓</span>`}</span></div>
+      ${pend.length?`<div class="muted small" style="padding-left:16px">Sin cobrar (${money(brutoPend)}): ${pend.map(j=>diaCortoLabel(j.fecha)).join(', ')}</div>`:''}
+    </div>`;
+  }).join("")+`</div>`;
+}
+
 /* ============================================================
    VISTA: NÓMINA / COBROS
    ============================================================ */
@@ -1028,8 +1047,8 @@ function vistaNomina(){
           <div class="tline" style="border-bottom:1px solid var(--line);padding-bottom:6px">
             <span><b>${b.label?escapeHtml(b.label):'Semana'}</b> <span class="muted small">${rangoFechas(b.fIni,b.fFin)} · ${fhoras(b.horas)}</span><br><span class="chip dot ${chipClase(b.estadoCobro)}">${b.estadoCobro}</span></span>
             <b>${money(b.neto)}</b></div>
-          ${b.dias.map(j=>`<div class="tline" style="border:0;padding:3px 0 3px 4px">
-            <span>${diaCortoLabel(j.fecha)} <span class="muted small">${fhoras(j.horasTotales)}</span> <span class="chip dot ${chipClase(j.estadoCobro)}">${esCobrada(j)?'Cobrada':'Pend.'}</span></span>
+          ${b.dias.map(j=>`<div class="tline" style="border:0;padding:4px 0 4px 4px;align-items:flex-start">
+            <span><b>${diaCortoLabel(j.fecha)}</b> <span class="muted small">${fhoras(j.horasTotales)}</span> <span class="chip dot ${chipClase(j.estadoCobro)}">${esCobrada(j)?'Cobrada':'Pend.'}</span><br><span class="muted small">${escapeHtml(nombreHotel(j))} · ${escapeHtml(nombreServicio(j))}</span></span>
             <b>${money(j.brutoEstimado)}</b></div>`).join('')}
           <div class="tline" style="border:0;padding:2px 0"><span class="muted small">Base cotiz. · deducc. (${(S.pct*100).toFixed(2)}%)</span><span class="small">${money(b.base)} · <span style="color:var(--danger)">−${money(b.deduc)}</span></span></div>
           <div class="tline" style="border-top:1px solid var(--line);padding-top:6px"><span><b>Neto ${b.label?'contrato':'semana'}</b></span><b style="color:var(--accent)">${money(b.neto)}</b></div>
@@ -1060,8 +1079,8 @@ function vistaNomina(){
 
   // Resumen por ETT / hotel / servicio
   html+=`<div class="section-title">Por ETT</div>`+resumenAgrupado(conf,j=>j.ettId,id=>getEtt(id)?.nombre,id=>getEtt(id)?.color,ref);
-  html+=`<div class="section-title">Por hotel</div>`+resumenAgrupado(conf,j=>j.hotelId,id=>getHotel(id)?.nombre,id=>getHotel(id)?.color);
-  html+=`<div class="section-title">Por servicio</div>`+resumenAgrupado(conf,j=>j.servicioId,id=>getServicio(id)?.nombre,id=>getServicio(id)?.color);
+  html+=`<div class="section-title">¿Me pagaron todos los días? · Por hotel</div>`+controlCobrosPor(conf,j=>j.hotelId,id=>getHotel(id)?.nombre,id=>getHotel(id)?.color);
+  html+=`<div class="section-title">¿Me pagaron todos los días? · Por servicio</div>`+controlCobrosPor(conf,j=>j.servicioId,id=>getServicio(id)?.nombre,id=>getServicio(id)?.color);
 
   // Pagos del mes
   html+=`<div class="section-title">Pagos recibidos · ${MESES[ref.getMonth()]}</div>`;
